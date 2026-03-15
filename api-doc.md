@@ -1,4 +1,5 @@
 # API Documentation
+# by Everyone
 
 ## HTTP Method Guide
 

@@ -127,7 +127,7 @@ uvicorn app.main:app --reload
 ## Out of Scope (v2+)
 
 - Refresh tokens
-- Apple/GitHub/Kakao auth providers
+- Apple/GitHub auth providers
 - Real-time dining hall occupancy
 - Push notifications
 - Weekly/monthly nutrition statistics

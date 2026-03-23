@@ -84,6 +84,7 @@ class UserResponse(BaseModel):
 
 class AuthResponse(BaseModel):
     token: str
+    refreshToken: str
     user: UserResponse
 
 

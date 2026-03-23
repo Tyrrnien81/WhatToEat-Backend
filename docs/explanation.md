@@ -1,10 +1,10 @@
-# db table component explanation
+# DB Table Component Explanation
 
 DECIMAL(10,2)
 10 = total number of digits allowed
 2 = number of digits allowed after dp "."
 
-# extracted data explanation
+# Extracted Data Explanation
 
   "restaurant": {
     "id": 45372,
@@ -16,28 +16,28 @@ DECIMAL(10,2)
     "name": "Dinner"
   }
 
-식당들은 모두 고유의 코드가 있다.
-# TODO: 모든 데이터를 크롤링해서 식당별 고유 코드 매핑 (KEY로 사용)
+Each dining hall has a unique code/ID.
+# TODO: Crawl all data and map unique codes per dining hall (use as KEY)
 
 # menu_info
 menu_info table (STATION)
 IDs such as 146701, 146703...
-1849, Pizza가게, Bakery...등 
+1849, Pizza place, Bakery... etc.
 
 # menu_items # TODO: breakdown components into DB
-함정이 있음. there are header rows: which looks like:
+There's a catch: there are header rows that look like:
 food = null
 is_section-title = true
 
-이게 무엇을 의미하느냐?
-entree, sides, breads, choose your filling... 등 선택 옵션...
-DB를 가르는 지표로 해도 될듯?
+What does this mean?
+entree, sides, breads, choose your filling... these are selection options.
+Could be used as indicators to partition the DB.
 
-## category 또한 존재...
+## category also exists...
 other, side, entree, dessert... can give dessert options
 
 ## food icons
-Vegan, Vegeterian, Halal... 태그로 사용 가능.
+Vegan, Vegetarian, Halal... can be used as tags.
 
 {
         "id": 180292466,

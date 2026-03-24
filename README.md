@@ -8,13 +8,14 @@ A backend service for a UW-Madison dining hall meal recommendation app. Helps st
 |-----------|------------|
 | Language | Python |
 | Framework | FastAPI |
-| ORM | Django ORM (standalone) |
-| Database | PostgreSQL |
+| ORM | SQLAlchemy (async) |
+| Database | PostgreSQL (Supabase) |
 | Cache | Redis |
 | Object Storage | AWS S3 |
 | Auth | Google OAuth2 + Custom JWT |
 | Scheduler | APScheduler (daily Nutrislice ingestion) |
 | Deployment | AWS (EC2/ECS) |
+| DB Hosting | Supabase (managed Postgres) |
 
 ## Features (MVP)
 
@@ -44,17 +45,15 @@ whattoeat-backend/
 │   │   ├── scan.py
 │   │   ├── community.py
 │   │   └── profile.py
-│   ├── models/                  # Django ORM models
+│   ├── models/                  # SQLAlchemy models
 │   ├── schemas/                 # Pydantic request/response schemas
 │   ├── services/                # Business logic
 │   ├── ingestion/               # Nutrislice data pipeline
 │   ├── recommendation/          # Recommendation algorithm
 │   └── utils/                   # JWT, OAuth, Redis, S3 helpers
-├── django_settings.py           # Django ORM standalone config
-├── manage.py                    # Django migrations CLI
 ├── requirements.txt
 ├── Dockerfile
-├── docker-compose.yml           # Local dev: FastAPI + Postgres + Redis
+├── docker-compose.yml           # Local dev: FastAPI + Redis (DB on Supabase)
 └── tests/
 ```
 
@@ -101,28 +100,36 @@ Full API documentation: [api-document/README.md](api-document/README.md) | Detai
 git clone https://github.com/Tyrrnien81/WhatToEat-Backend.git
 cd WhatToEat-Backend
 
-# Start services (Postgres + Redis + FastAPI)
-docker-compose up -d
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
 
-# Run migrations
-python manage.py migrate
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment variables
+# Copy .env.example to .env and fill in your Supabase credentials:
+#   DATABASE_URL=postgresql+asyncpg://<user>:<password>@<host>:6543/postgres
+# You can find the connection string in your Supabase project under
+# Settings → Database → Connection string → URI (use the "connection pooling" URI on port 6543).
 
 # Start the server
 uvicorn app.main:app --reload
+# Tables are auto-created on startup via SQLAlchemy Base.metadata.create_all
 ```
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | Supabase PostgreSQL connection string (e.g. `postgresql+asyncpg://postgres.<ref>:<password>@aws-0-us-east-1.pooler.supabase.com:6543/postgres`) |
 | `REDIS_URL` | Redis connection string |
 | `JWT_SECRET` | Secret key for JWT signing |
 | `GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
 | `AWS_ACCESS_KEY_ID` | AWS credentials for S3 |
 | `AWS_SECRET_ACCESS_KEY` | AWS credentials for S3 |
 | `AWS_S3_BUCKET` | S3 bucket name for media uploads |
-| `DJANGO_SETTINGS_MODULE` | Path to Django settings (e.g., `django_settings`) |
+
 
 ## Out of Scope (v2+)
 

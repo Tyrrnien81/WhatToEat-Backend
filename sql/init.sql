@@ -1,5 +1,4 @@
 -- WhatToEat Database Initialization
--- Supabase Project: https://sckvjvcywdlthsztsuau.supabase.co
 -- Run in Supabase SQL Editor
 
 -- ============================================================

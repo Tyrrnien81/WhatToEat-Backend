@@ -1,0 +1,3 @@
+# Ignore scraped JSON date folders (too large for git)
+2026-*/
+*.json

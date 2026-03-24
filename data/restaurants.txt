@@ -1,0 +1,15 @@
+# UW-Madison Dining Halls — Nutrislice API
+# Source: https://wisc-housingdining.api.nutrislice.com/menu/api/schools/
+# Queried: 2026-03-23
+
+# slug                    | name                   | meals available (item count on 2026-03-23)
+carsons-market            | Carson's Market        | lunch(50), dinner(41)
+four-lakes-market         | Four Lakes Market      | breakfast(23), lunch(53), dinner(53)
+gordon-avenue-market      | Gordon Avenue Market    | breakfast(23), lunch(70), dinner(66)
+lizs-market               | Liz's Market           | breakfast(17), lunch(35), dinner(29)
+lowell-market             | Lowell Market          | breakfast(12), lunch(28), dinner(15)
+rhetas-market             | Rheta's Market         | breakfast(51), lunch(87), dinner(85)
+
+# API URL pattern:
+# https://wisc-housingdining.api.nutrislice.com/menu/api/weeks/school/{slug}/menu-type/{meal}/{YYYY}/{MM}/{DD}/
+# Example: .../school/gordon-avenue-market/menu-type/dinner/2026/03/23/

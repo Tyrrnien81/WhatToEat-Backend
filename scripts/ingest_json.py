@@ -316,5 +316,5 @@ async def ingest(json_path: str):
 
 
 if __name__ == "__main__":
-    json_file = sys.argv[1] if len(sys.argv) > 1 else "Gordon_Avenue_Market_03-15-2026.json"
+    json_file = sys.argv[1] if len(sys.argv) > 1 else "data/Gordon_Avenue_Market_03-15-2026.json"
     asyncio.run(ingest(json_file))

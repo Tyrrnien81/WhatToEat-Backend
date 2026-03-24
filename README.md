@@ -15,7 +15,7 @@ A backend service for a UW-Madison dining hall meal recommendation app. Helps st
 | Auth | Google OAuth2 + Custom JWT |
 | Scheduler | APScheduler (daily Nutrislice ingestion) |
 | Deployment | AWS (EC2/ECS) |
-| DB Hosting | Supabase (managed Postgres) |
+| DB Hosting | Supabase (managed Postgres, us-west-2) |
 
 ## Features (MVP)
 
@@ -33,39 +33,48 @@ A backend service for a UW-Madison dining hall meal recommendation app. Helps st
 whattoeat-backend/
 ├── app/
 │   ├── main.py                  # FastAPI entry point
-│   ├── config.py                # Settings (env vars, DB, Redis, S3, JWT)
+│   ├── config.py                # Settings (env vars, DB, JWT)
+│   ├── database.py              # Async SQLAlchemy engine & session
 │   ├── dependencies.py          # Shared dependencies (auth, db session)
 │   ├── routers/                 # Route handlers per domain
 │   │   ├── auth.py
-│   │   ├── questionnaire.py
-│   │   ├── dining.py
-│   │   ├── home.py
-│   │   ├── recommendation.py
-│   │   ├── tracking.py
-│   │   ├── scan.py
-│   │   ├── community.py
-│   │   └── profile.py
+│   │   └── favorite.py
 │   ├── models/                  # SQLAlchemy models
+│   │   ├── user.py
+│   │   └── favorite.py
 │   ├── schemas/                 # Pydantic request/response schemas
+│   │   ├── auth.py
+│   │   └── favorite.py
 │   ├── services/                # Business logic
-│   ├── ingestion/               # Nutrislice data pipeline
-│   ├── recommendation/          # Recommendation algorithm
-│   └── utils/                   # JWT, OAuth, Redis, S3 helpers
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml           # Local dev: FastAPI + Redis (DB on Supabase)
-└── tests/
+│   │   ├── auth_service.py
+│   │   └── favorite_service.py
+│   └── utils/                   # JWT, OAuth helpers
+│       ├── jwt.py
+│       ├── google_oauth.py
+│       └── email.py
+├── scripts/
+│   └── ingest_json.py           # Nutrislice JSON → Supabase ingestion
+├── sql/
+│   └── init.sql                 # Full DB schema (16 tables)
+├── scraper.py                   # Nutrislice menu scraper
+├── docs/                        # Per-endpoint API specs
+└── requirements.txt
 ```
+
+Each domain follows the pattern: **model → schema → service → router**.
 
 ## Database Schema
 
-**19 tables** across 5 domains:
+**16 tables** across 4 phases (all live in Supabase):
 
-- **Menu (10 tables):** `restaurants`, `meal_types`, `menu_snapshots`, `menu_sections`, `stations`, `foods`, `food_nutrition`, `food_icons`, `food_icon_assignments`, `menu_section_items`
-- **User (3 tables):** `users`, `user_preferences`, `otp_codes`
-- **Tracking (2 tables):** `meal_logs`, `meal_log_items`
-- **Favorites (1 table):** `favorites`
-- **Community (3 tables):** `posts`, `post_media`, `post_likes`
+| Phase | Tables | Count |
+|-------|--------|-------|
+| 0 — Auth | `users`, `verification_codes`, `refresh_tokens` | 3 |
+| 1 — Menu & Food | `restaurants`, `meal_types`, `foods`, `food_icons`, `menu_snapshots`, `menu_sections`, `food_nutrition`, `food_icon_assignments`, `menu_section_items` | 9 |
+| 2 — User Preferences & Tracking | `user_preferences`, `meal_logs`, `meal_log_items` | 3 |
+| 3 — Favorites | `favorites` | 1 |
+
+Full schema: [`sql/init.sql`](sql/init.sql) | Column-level docs: [`docs/db-doc.md`](docs/db-doc.md)
 
 ## API Overview
 
@@ -81,17 +90,29 @@ All protected endpoints require a JWT token in the `Authorization: Bearer <token
 | **Community** | `GET/POST /community/posts`, `POST/DELETE .../like`, `GET/POST .../comments` | Mixed |
 | **Profile** | `GET/PATCH /users/me`, `GET/POST/DELETE /users/me/food-log`, `POST /users/me/avatar` | Yes |
 
-Full API documentation: [api-document/README.md](api-document/README.md) | Detailed spec: [my-understanding/detailed-api-doc.md](my-understanding/detailed-api-doc.md)
+Full API documentation: [docs/api/README.md](docs/api/README.md) | Detailed spec: [my-understanding/detailed-api-doc.md](my-understanding/detailed-api-doc.md)
 
-## Implementation Phases
+## Implementation Progress
 
-1. **Project Scaffold + Auth** — FastAPI setup, Docker Compose, user models, auth endpoints, JWT middleware
-2. **Menu Ingestion Pipeline** — Nutrislice client, parser, daily scheduler, S3 raw storage, Redis cache invalidation
-3. **Menu API** — Dining hall listing, menu browsing, search, favorites, Redis caching
-4. **Recommendation Engine** — Allergen/diet filtering, linear programming optimizer, top-N combo generation
-5. **Meal Tracking** — Meal logging, daily nutrition summary vs. goals
-6. **Community** — Posts with media (S3), likes, comments, pagination
-7. **Scan** — Search-based food lookup (MVP), image upload flow
+- [x] **Project Scaffold + Auth** — FastAPI setup, user models, auth endpoints (signup/signin/Google OAuth/password reset/email verification), JWT middleware
+- [x] **Database Init** — All 16 tables created in Supabase via `sql/init.sql`
+- [x] **Data Ingestion** — `scripts/ingest_json.py` loads Nutrislice JSON exports into Supabase (Gordon Avenue Market ingested)
+- [x] **Favorites API** — `POST /favorites` (JSONB snapshot, 409 on duplicate), `DELETE /favorites/{id}` (ownership check)
+- [ ] **Dining Halls API** — List halls, get menus/stations (tables + data exist, endpoints not built)
+- [ ] **Homescreen API** — `GET /recommendations/combo`, `GET /goals/today`, `POST /log-meal` (P0 — powers the core frontend flow)
+- [ ] **Questionnaire API** — Submit/get/update user dietary preferences
+- [ ] **Profile API** — User profile CRUD, food logging, avatar upload
+- [ ] **Community API** — Posts, likes, comments (tables not yet created)
+- [ ] **Scan API** — Search-based food lookup (MVP)
+- [ ] **Recommendation Engine** — Linear programming optimizer for meal combos
+
+### API Priority (from frontend button audit)
+
+| Priority | Endpoints | Why |
+|----------|-----------|-----|
+| **P0** | `GET /recommendations/combo`, `GET /goals/today`, `POST /log-meal` | Powers date pills, hall cards, "Log This Meal" button |
+| **P1** | Food swap alternatives, quick add-ons | Swipe-to-swap, extra meal items |
+| **P2** | Favorites (done), Community, Scan | Backend-ahead or lower usage |
 
 ## Getting Started
 
@@ -133,7 +154,6 @@ uvicorn app.main:app --reload
 
 ## Out of Scope (v2+)
 
-- Refresh tokens
 - Apple/GitHub auth providers
 - Real-time dining hall occupancy
 - Push notifications
@@ -141,4 +161,3 @@ uvicorn app.main:app --reload
 - Friend features / social meal sharing
 - ML-based food scanning
 - Multi-school support
-- Comments on community posts (included in detailed API doc, deferred in backend plan)

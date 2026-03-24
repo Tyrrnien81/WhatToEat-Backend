@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.database import engine, Base
-from app.routers import auth, homescreen
+from app.routers import homescreen
 
 
 @asynccontextmanager
@@ -16,7 +16,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="WhatToEat API", version="0.1.0", lifespan=lifespan)
 
-app.include_router(auth.router)
 app.include_router(homescreen.router)
 
 

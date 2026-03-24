@@ -2,44 +2,18 @@
 -- Run in Supabase SQL Editor
 
 -- ============================================================
--- Phase 0: Auth tables (3 tables)
+-- Phase 0: Users table
 -- ============================================================
 
--- 0a. users
 CREATE TABLE IF NOT EXISTS users (
     id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     email         VARCHAR(255) UNIQUE NOT NULL,
     name          VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255),
-    provider      VARCHAR(50) NOT NULL DEFAULT 'email',
-    is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMPTZ DEFAULT NOW(),
     updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS ix_users_email ON users (email);
-
--- 0b. verification_codes
-CREATE TABLE IF NOT EXISTS verification_codes (
-    id         INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    email      VARCHAR(255) NOT NULL,
-    code       VARCHAR(6) NOT NULL,
-    code_type  VARCHAR(20) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS ix_verification_codes_email ON verification_codes (email);
-
--- 0c. refresh_tokens
-CREATE TABLE IF NOT EXISTS refresh_tokens (
-    id         INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id    UUID NOT NULL REFERENCES users(id),
-    token      VARCHAR(500) UNIQUE NOT NULL,
-    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL
-);
 
 -- ============================================================
 -- Phase 1: Menu & Food Data (9 tables)

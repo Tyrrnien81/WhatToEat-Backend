@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user
 from app.schemas.homescreen import (
     CombosListResponse,
     DailyGoalsResponse,
@@ -22,7 +21,7 @@ router = APIRouter(tags=["homescreen"])
 async def get_combos(
     date_param: str | None = Query(None, alias="date"),
     mealType: str | None = Query(None),
-    user_id: uuid.UUID = Depends(get_current_user),
+    user_id: uuid.UUID = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
     target_date = date.fromisoformat(date_param) if date_param else date.today()
@@ -32,7 +31,7 @@ async def get_combos(
 @router.get("/goals/daily", response_model=DailyGoalsResponse)
 async def get_daily_goals(
     date_param: str | None = Query(None, alias="date"),
-    user_id: uuid.UUID = Depends(get_current_user),
+    user_id: uuid.UUID = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
     target_date = date.fromisoformat(date_param) if date_param else date.today()
@@ -42,7 +41,7 @@ async def get_daily_goals(
 @router.get("/menus/summary", response_model=MenuSummaryResponse)
 async def get_menu_summary(
     date_param: str | None = Query(None, alias="date"),
-    user_id: uuid.UUID = Depends(get_current_user),
+    user_id: uuid.UUID = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
     target_date = date.fromisoformat(date_param) if date_param else date.today()
@@ -52,7 +51,7 @@ async def get_menu_summary(
 @router.post("/meals/log", response_model=LogMealResponse, status_code=201)
 async def log_meal(
     body: LogMealRequest,
-    user_id: uuid.UUID = Depends(get_current_user),
+    user_id: uuid.UUID = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
     items = [item.model_dump() for item in body.items]

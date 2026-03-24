@@ -1,5 +1,7 @@
 # GET /goals/daily
 
+> **Status:** ✅ Implemented — `app/routers/homescreen.py` → `app/services/homescreen_service.py`
+
 Retrieve the user's daily nutrition goal progress. Returns target values and consumed amounts for calories and macronutrients, used to render the nutrition status bar on the home screen.
 
 ## Request

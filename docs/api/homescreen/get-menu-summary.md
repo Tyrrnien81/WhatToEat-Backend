@@ -1,5 +1,7 @@
 # GET /menus/summary
 
+> **Status:** ✅ Implemented — `app/routers/homescreen.py` → `app/services/homescreen_service.py`
+
 Retrieve today's highlighted menu items from each dining hall, filtered and ranked by the user's dietary preferences. Used to render the dining hall cards on the home screen.
 
 ## Request

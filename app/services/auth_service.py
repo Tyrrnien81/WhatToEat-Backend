@@ -1,287 +1,381 @@
-import secrets
+import random
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User, VerificationCode, RefreshToken
-from app.utils.jwt import create_access_token, create_refresh_token, decode_token
-from app.utils.google_oauth import verify_google_token
+from app.models.user import RefreshToken, User, VerificationCode
 from app.utils.email import send_verification_email
+from app.utils.google_oauth import verify_google_token
+from app.utils.jwt import create_access_token, create_refresh_token, decode_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-VERIFICATION_CODE_EXPIRY_MINUTES = 6
-RESEND_COOLDOWN_SECONDS = 30
 
 
 def _hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def _verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+def _verify_password(plain_password: str, password_hash: str) -> bool:
+    return pwd_context.verify(plain_password, password_hash)
 
 
 def _generate_code() -> str:
-    return f"{secrets.randbelow(900000) + 100000}"
+    return f"{random.randint(0, 999999):06d}"
 
 
-# ─── Sign In ─────────────────────────────────────────────
-
-async def sign_in(email: str, password: str, db: AsyncSession) -> dict:
-    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
-    if not user or not user.password_hash or not _verify_password(password, user.password_hash):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password")
-    if not user.is_verified:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email not verified")
-
-    access_token = create_access_token(user.id, user.email)
-    refresh_tok, refresh_exp = create_refresh_token(user.id)
-    db.add(RefreshToken(user_id=user.id, token=refresh_tok, expires_at=refresh_exp))
-    await db.commit()
-
+def _user_response(user: User) -> dict:
     return {
-        "token": access_token,
-        "refreshToken": refresh_tok,
-        "user": {"id": str(user.id), "email": user.email, "name": user.name},
+        "id": str(user.id),
+        "email": user.email,
+        "name": user.name,
     }
 
 
-# ─── Sign Up ─────────────────────────────────────────────
+async def _create_and_store_refresh_token(user_id: uuid.UUID, db: AsyncSession) -> str:
+    token, expires_at = create_refresh_token(user_id)
 
-async def sign_up(email: str, password: str, name: str, db: AsyncSession) -> dict:
-    existing = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
-    if existing:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-
-    user = User(
-        email=email,
-        name=name,
-        password_hash=_hash_password(password),
-        provider="email",
-        is_verified=False,
+    refresh_token = RefreshToken(
+        user_id=user_id,
+        token=token,
+        expires_at=expires_at,
+        is_revoked=False,
     )
-    db.add(user)
-    await db.flush()
-
-    code = _generate_code()
-    db.add(VerificationCode(
-        email=email,
-        code=code,
-        code_type="signup",
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
-    ))
+    db.add(refresh_token)
     await db.commit()
 
-    try:
-        send_verification_email(email, code)
-    except Exception:
-        pass  # don't block signup if email fails; user can resend
+    return token
+
+
+async def _replace_refresh_token(user_id: uuid.UUID, old_token: str, db: AsyncSession) -> tuple[str, str]:
+    now = datetime.now(timezone.utc)
+
+    result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.token == old_token,
+            RefreshToken.user_id == user_id,
+            RefreshToken.is_revoked.is_(False),
+        )
+    )
+    stored_token = result.scalar_one_or_none()
+
+    if not stored_token:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    expires_at = stored_token.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at <= now:
+        stored_token.is_revoked = True
+        await db.commit()
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+
+    stored_token.is_revoked = True
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        await db.commit()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_access_token = create_access_token(user.id, user.email)
+    new_refresh_token, new_refresh_exp = create_refresh_token(user.id)
+
+    db.add(
+        RefreshToken(
+            user_id=user.id,
+            token=new_refresh_token,
+            expires_at=new_refresh_exp,
+            is_revoked=False,
+        )
+    )
+
+    await db.commit()
+    return new_access_token, new_refresh_token
+
+
+async def _create_verification_code(email: str, code_type: str, db: AsyncSession) -> str:
+    await db.execute(
+        delete(VerificationCode).where(
+            VerificationCode.email == email,
+            VerificationCode.code_type == code_type,
+        )
+    )
+
+    code = _generate_code()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=6)
+
+    db.add(
+        VerificationCode(
+            email=email,
+            code=code,
+            code_type=code_type,
+            expires_at=expires_at,
+        )
+    )
+    await db.commit()
+    return code
+
+
+async def sign_up(email: str, password: str, name: str, db: AsyncSession):
+    result = await db.execute(select(User).where(User.email == email))
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user and existing_user.is_verified:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    if existing_user and existing_user.provider == "google":
+        raise HTTPException(
+            status_code=400,
+            detail="This email is already registered with Google sign-in",
+        )
+
+    if existing_user:
+        existing_user.name = name
+        existing_user.password_hash = _hash_password(password)
+        existing_user.provider = "email"
+    else:
+        existing_user = User(
+            email=email,
+            name=name,
+            password_hash=_hash_password(password),
+            provider="email",
+            is_verified=False,
+        )
+        db.add(existing_user)
+
+    await db.commit()
+    await db.refresh(existing_user)
+
+    code = await _create_verification_code(email, "signup", db)
+    send_verification_email(email, code)
 
     return {
-        "message": "Account created successfully. Verification code sent to email.",
-        "user": {"id": str(user.id), "email": user.email, "name": user.name},
+        "message": "Sign-up successful. Verification code sent to your email.",
+        "user": _user_response(existing_user),
     }
 
 
-# ─── Google Auth ──────────────────────────────────────────
+async def sign_in(email: str, password: str, db: AsyncSession):
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
 
-async def google_auth(id_token: str, db: AsyncSession) -> dict:
-    google_info = verify_google_token(id_token)
-    if not google_info:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired Google token")
-
-    email = google_info["email"]
-    name = google_info["name"]
-
-    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
     if not user:
-        user = User(email=email, name=name, provider="google", is_verified=True)
-        db.add(user)
-        await db.flush()
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if user.provider != "email":
+        raise HTTPException(status_code=400, detail="Use Google sign-in for this account")
+
+    if not user.password_hash or not _verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Email is not verified")
 
     access_token = create_access_token(user.id, user.email)
-    refresh_tok, refresh_exp = create_refresh_token(user.id)
-    db.add(RefreshToken(user_id=user.id, token=refresh_tok, expires_at=refresh_exp))
-    await db.commit()
+    refresh_token = await _create_and_store_refresh_token(user.id, db)
 
     return {
         "token": access_token,
-        "refreshToken": refresh_tok,
-        "user": {"id": str(user.id), "email": user.email, "name": user.name},
+        "refreshToken": refresh_token,
+        "user": _user_response(user),
     }
 
 
-# ─── Forgot Password ─────────────────────────────────────
+async def google_auth(id_token: str, db: AsyncSession):
+    google_user = verify_google_token(id_token)
+    if not google_user:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
 
-async def forgot_password(email: str, db: AsyncSession) -> dict:
-    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
-    if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Email not registered")
+    email = google_user["email"]
+    name = google_user.get("name") or email.split("@")[0]
 
-    code = _generate_code()
-    db.add(VerificationCode(
-        email=email,
-        code=code,
-        code_type="reset",
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
-    ))
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        if user.provider == "email":
+            if not user.is_verified:
+                user.is_verified = True
+            if not user.name:
+                user.name = name
+        else:
+            user.name = name or user.name
+    else:
+        user = User(
+            email=email,
+            name=name,
+            password_hash=None,
+            provider="google",
+            is_verified=True,
+        )
+        db.add(user)
+
     await db.commit()
+    await db.refresh(user)
 
-    try:
-        send_verification_email(email, code)
-    except Exception:
-        pass
+    access_token = create_access_token(user.id, user.email)
+    refresh_token = await _create_and_store_refresh_token(user.id, db)
 
-    return {"message": "Verification code sent to email"}
+    return {
+        "token": access_token,
+        "refreshToken": refresh_token,
+        "user": _user_response(user),
+    }
 
 
-# ─── Verify Email ─────────────────────────────────────────
+async def forgot_password(email: str, db: AsyncSession):
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
 
-async def verify_email(email: str, code: str, db: AsyncSession) -> dict:
-    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    # 이메일 존재 여부 노출 방지
     if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Email not registered")
+        return {"message": "If the email exists, a verification code has been sent."}
 
-    vc = (await db.execute(
-        select(VerificationCode)
-        .where(
+    if user.provider != "email":
+        return {"message": "If the email exists, a verification code has been sent."}
+
+    code = await _create_verification_code(email, "reset", db)
+    send_verification_email(email, code)
+
+    return {"message": "If the email exists, a verification code has been sent."}
+
+
+async def verify_email(email: str, code: str, db: AsyncSession):
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    result = await db.execute(
+        select(VerificationCode).where(
             VerificationCode.email == email,
             VerificationCode.code == code,
-            VerificationCode.expires_at > datetime.now(timezone.utc),
+            VerificationCode.code_type == "signup",
         )
-        .order_by(VerificationCode.created_at.desc())
-    )).scalar_one_or_none()
+    )
+    verification = result.scalar_one_or_none()
 
-    if not vc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification code")
+    if not verification:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    expires_at = verification.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Verification code expired")
 
     user.is_verified = True
-    # clean up used codes for this email
-    await db.execute(delete(VerificationCode).where(VerificationCode.email == email))
+    await db.delete(verification)
     await db.commit()
 
     return {"message": "Email verified successfully"}
 
 
-# ─── Resend Code ──────────────────────────────────────────
+async def resend_code(email: str, db: AsyncSession):
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
 
-async def resend_code(email: str, db: AsyncSession) -> dict:
-    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
     if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Email not registered")
+        raise HTTPException(status_code=404, detail="User not found")
 
-    latest = (await db.execute(
-        select(VerificationCode)
-        .where(VerificationCode.email == email)
-        .order_by(VerificationCode.created_at.desc())
-    )).scalar_one_or_none()
+    if user.provider != "email":
+        raise HTTPException(status_code=400, detail="Google accounts do not require email verification")
 
-    if latest:
-        elapsed = (datetime.now(timezone.utc) - latest.created_at.replace(tzinfo=timezone.utc)).total_seconds()
-        if elapsed < RESEND_COOLDOWN_SECONDS:
-            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Please wait before requesting a new code")
+    if user.is_verified:
+        return {"message": "Email is already verified"}
 
-    code_type = "signup" if not user.is_verified else "reset"
-    code = _generate_code()
-    db.add(VerificationCode(
-        email=email,
-        code=code,
-        code_type=code_type,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES),
-    ))
-    await db.commit()
+    code = await _create_verification_code(email, "signup", db)
+    send_verification_email(email, code)
 
-    try:
-        send_verification_email(email, code)
-    except Exception:
-        pass
-
-    return {"message": "Verification code resent to email"}
+    return {"message": "Verification code resent successfully"}
 
 
-# ─── Reset Password ──────────────────────────────────────
+async def reset_password(email: str, code: str, new_password: str, db: AsyncSession):
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
 
-async def reset_password(email: str, code: str, new_password: str, db: AsyncSession) -> dict:
-    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
     if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Email not registered")
+        raise HTTPException(status_code=404, detail="User not found")
 
-    vc = (await db.execute(
-        select(VerificationCode)
-        .where(
+    if user.provider != "email":
+        raise HTTPException(status_code=400, detail="Password reset is only available for email accounts")
+
+    result = await db.execute(
+        select(VerificationCode).where(
             VerificationCode.email == email,
             VerificationCode.code == code,
             VerificationCode.code_type == "reset",
-            VerificationCode.expires_at > datetime.now(timezone.utc),
         )
-        .order_by(VerificationCode.created_at.desc())
-    )).scalar_one_or_none()
+    )
+    reset_code = result.scalar_one_or_none()
 
-    if not vc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification code")
+    if not reset_code:
+        raise HTTPException(status_code=400, detail="Invalid reset code")
+
+    expires_at = reset_code.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Reset code expired")
 
     user.password_hash = _hash_password(new_password)
-    await db.execute(delete(VerificationCode).where(VerificationCode.email == email))
+    await db.delete(reset_code)
+
+    # 기존 refresh token들 전부 revoke
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user.id, RefreshToken.is_revoked.is_(False))
+        .values(is_revoked=True)
+    )
+
     await db.commit()
 
-    return {"message": "Password reset successfully"}
+    return {"message": "Password has been reset successfully"}
 
 
-# ─── Refresh Token ────────────────────────────────────────
+async def refresh_access_token(refresh_token: str, db: AsyncSession):
+    payload = decode_token(refresh_token)
 
-async def refresh_access_token(refresh_token_str: str, db: AsyncSession) -> dict:
-    payload = decode_token(refresh_token_str)
     if not payload or payload.get("type") != "refresh":
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token")
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    stored = (await db.execute(
-        select(RefreshToken).where(
-            RefreshToken.token == refresh_token_str,
-            RefreshToken.is_revoked == False,
-        )
-    )).scalar_one_or_none()
+    try:
+        user_id = uuid.UUID(payload["sub"])
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid refresh token payload")
 
-    if not stored:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token")
+    new_access_token, new_refresh_token = await _replace_refresh_token(user_id, refresh_token, db)
 
-    user = (await db.execute(select(User).where(User.id == stored.user_id))).scalar_one_or_none()
-    if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
-
-    # revoke old token
-    stored.is_revoked = True
-
-    # issue new tokens
-    new_access = create_access_token(user.id, user.email)
-    new_refresh, new_refresh_exp = create_refresh_token(user.id)
-    db.add(RefreshToken(user_id=user.id, token=new_refresh, expires_at=new_refresh_exp))
-    await db.commit()
-
-    return {"token": new_access, "refreshToken": new_refresh}
+    return {
+        "token": new_access_token,
+        "refreshToken": new_refresh_token,
+    }
 
 
-# ─── Logout ──────────────────────────────────────────────
-
-async def logout(user_id, db: AsyncSession) -> dict:
-    # revoke all refresh tokens for this user
-    tokens = (await db.execute(
-        select(RefreshToken).where(RefreshToken.user_id == user_id, RefreshToken.is_revoked == False)
-    )).scalars().all()
-    for t in tokens:
-        t.is_revoked = True
+async def logout(user_id: uuid.UUID, db: AsyncSession):
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user_id, RefreshToken.is_revoked.is_(False))
+        .values(is_revoked=True)
+    )
     await db.commit()
 
     return {"message": "Logged out successfully"}
 
 
-# ─── Get Current User ────────────────────────────────────
+async def get_me(user_id: uuid.UUID, db: AsyncSession):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
 
-async def get_me(user_id, db: AsyncSession) -> dict:
-    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
-    return {"id": str(user.id), "email": user.email, "name": user.name}
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return _user_response(user)

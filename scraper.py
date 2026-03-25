@@ -1,76 +1,109 @@
+import json
 import os
+import sys
+import time
 import requests
 from datetime import date
-from dotenv import load_dotenv
-from supabase import create_client
 
-load_dotenv()
-
-url = os.getenv("SUPABASE_URL")
-key = os.getenv("SUPABASE_KEY")
-supabase = create_client(url, key)
-
-DINING_HALL = "gordon-avenue-market"
+RESTAURANTS = [
+    "carsons-market",
+    "four-lakes-market",
+    "gordon-avenue-market",
+    "lizs-market",
+    "lowell-market",
+    "rhetas-market",
+]
 MEALS = ["breakfast", "lunch", "dinner"]
+SKIP_MEALS = {
+    "carsons-market": {"breakfast"},
+}
 BASE_URL = "https://wisc-housingdining.api.nutrislice.com/menu/api/weeks/school"
 
-def fetch_menu(meal, target_date):
+# Nutrislice external IDs (from /menu/api/schools/ and weekly endpoints)
+RESTAURANT_META = {
+    "carsons-market":       {"id": 45370, "name": "Carson's Market"},
+    "four-lakes-market":    {"id": 45371, "name": "Four Lakes Market"},
+    "gordon-avenue-market": {"id": 45372, "name": "Gordon Avenue Market"},
+    "lizs-market":          {"id": 45373, "name": "Liz's Market"},
+    "lowell-market":        {"id": 45374, "name": "Lowell Market"},
+    "rhetas-market":        {"id": 45375, "name": "Rheta's Market"},
+}
+MEAL_TYPE_META = {
+    "breakfast": {"id": 14942, "name": "Breakfast"},
+    "lunch":     {"id": 14943, "name": "Lunch"},
+    "dinner":    {"id": 14944, "name": "Dinner"},
+}
+
+
+def fetch_menu(slug, meal, target_date):
     formatted = target_date.strftime("%Y/%m/%d")
-    api_url = f"{BASE_URL}/{DINING_HALL}/menu-type/{meal}/{formatted}/"
-    response = requests.get(api_url)
+    api_url = f"{BASE_URL}/{slug}/menu-type/{meal}/{formatted}/"
+    response = requests.get(api_url, timeout=15)
+    response.raise_for_status()
     return response.json()
 
-def save_to_db(data, meal, target_date):
-    today_str = str(target_date)
-    
-    for day in data.get("days", []):
-        if day.get("date") != today_str:
+
+def split_and_save(raw, slug, meal):
+    """Split a weekly API response into per-date files under data/{date}/."""
+    days = raw.get("days", [])
+    exported_at = raw.get("last_updated")
+    saved = 0
+
+    for day in days:
+        day_date = day.get("date")
+        if not day_date or not day.get("menu_items"):
             continue
-        
-        for menu_item in day.get("menu_items", []):
-            if menu_item.get("blank_line"):
-                continue
-            
-            food = menu_item.get("food")
-            if not food:
-                continue
 
-            # foods 테이블 저장
-            supabase.table("foods").upsert({
-                "id": food["id"],
-                "name": food["name"]
-            }).execute()
+        # Build the flat structure that ingest_json.py expects
+        flat = {
+            "restaurant": RESTAURANT_META[slug],
+            "meal_type": MEAL_TYPE_META[meal],
+            "date": day_date,
+            "exported_at": exported_at,
+            "menu": {
+                "menu_info": day.get("menu_info", {}),
+                "menu_items": day.get("menu_items", []),
+            },
+        }
 
-            # food_nutrition 저장
-            nutrition = food.get("rounded_nutrition_info", {})
-            if nutrition:
-                supabase.table("food_nutrition").upsert({
-                    "food_id": food["id"],
-                    **{k: v for k, v in nutrition.items() if v is not None}
-                }).execute()
+        out_dir = os.path.join("data", day_date)
+        os.makedirs(out_dir, exist_ok=True)
 
-            # food_flags 저장
-            for flag in food.get("icons", {}).get("food_icons", []):
-                supabase.table("food_flags").upsert({
-                    "food_id": food["id"],
-                    "type": flag.get("slug"),
-                }).execute()
+        filepath = os.path.join(out_dir, f"{slug}_{meal}.json")
+        with open(filepath, "w") as f:
+            json.dump(flat, f, indent=2)
+        saved += 1
 
-            # menu_items 저장
-            supabase.table("menu_items").insert({
-                "date": today_str,
-                "meal": meal,
-                "dining_hall": DINING_HALL,
-                "food_id": food["id"]
-            }).execute()
+    return saved
+
 
 def main():
-    today = date.today()
-    for meal in MEALS:
-        print(f"Fetching {meal}...")
-        data = fetch_menu(meal, today)
-        save_to_db(data, meal, today)
-        print(f"{meal} done!")
+    target = date.today()
+    if len(sys.argv) > 1:
+        target = date.fromisoformat(sys.argv[1])
+
+    pairs = [
+        (slug, meal)
+        for slug in RESTAURANTS
+        for meal in MEALS
+        if meal not in SKIP_MEALS.get(slug, set())
+    ]
+    total = len(pairs)
+    done = 0
+
+    for slug, meal in pairs:
+        done += 1
+        print(f"[{done}/{total}] {slug} / {meal}...", end=" ", flush=True)
+        try:
+            raw = fetch_menu(slug, meal, target)
+            saved = split_and_save(raw, slug, meal)
+            print(f"-> {saved} days saved")
+        except Exception as e:
+            print(f"SKIP ({e})")
+        time.sleep(1)
+
+    print("\nDone.")
+
 
 if __name__ == "__main__":
     main()

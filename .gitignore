@@ -1,1 +1,16 @@
+my-understanding/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+
+# Environment variables
 .env
+
+# OS files
+.DS_Store

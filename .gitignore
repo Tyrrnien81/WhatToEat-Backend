@@ -13,4 +13,5 @@ venv/
 .env
 
 # OS files
-.DS_Store
+.DS_Storeapp.db
+app.db

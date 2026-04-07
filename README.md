@@ -90,7 +90,7 @@ All protected endpoints require a JWT token in the `Authorization: Bearer <token
 | **Community** | `GET/POST /community/posts`, `POST/DELETE .../like`, `GET/POST .../comments` | Mixed |
 | **Profile** | `GET/PATCH /users/me`, `GET/POST/DELETE /users/me/food-log`, `POST /users/me/avatar` | Yes |
 
-Full API documentation: [docs/api/README.md](docs/api/README.md) | Detailed spec: [my-understanding/detailed-api-doc.md](my-understanding/detailed-api-doc.md)
+Full API documentation: [docs/api/README.md](docs/api/README.md). Personal notes and drafts live under `personal-docs/` (gitignored).
 
 ## Implementation Progress
 

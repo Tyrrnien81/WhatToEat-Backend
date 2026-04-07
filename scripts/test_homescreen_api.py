@@ -47,16 +47,14 @@ def ensure_project_python() -> None:
     if venv_python is None:
         return
 
-    current_python = Path(sys.executable)
     target_python = venv_python
+    target_venv = target_python.parent.parent.resolve()
 
-    same_interpreter = False
-    try:
-        same_interpreter = os.path.samefile(current_python, target_python)
-    except OSError:
-        same_interpreter = current_python == target_python
+    # Prefer environment identity over executable identity because
+    # .venv/bin/python can be a symlink to system python.
+    in_target_venv = Path(sys.prefix).resolve() == target_venv
 
-    if not same_interpreter and os.getenv("WTE_SKIP_REEXEC") != "1":
+    if not in_target_venv and os.getenv("WTE_SKIP_REEXEC") != "1":
         os.execve(
             str(target_python),
             [str(target_python), *sys.argv],
@@ -549,6 +547,172 @@ class HomeScreenApiTester:
 
         print("[PASS] POST /meals/log (DB insert verified)")
 
+    async def test_get_menu_summary_with_meal_type(self, ctx: TestContext) -> None:
+        """Test that GET /menus/summary accepts mealType filter."""
+        response = self._request(
+            "GET",
+            "/menus/summary",
+            params={
+                "user_id": str(ctx.user_id),
+                "date": ctx.target_date.isoformat(),
+                "mealType": ctx.meal_type,
+            },
+        )
+        assert response.status_code == 200, (
+            f"GET /menus/summary?mealType failed: {response.status_code} {response.text}"
+        )
+
+        payload = response.json()
+        assert payload.get("date") == ctx.target_date.isoformat(), "Menu summary date mismatch"
+        halls = payload.get("diningHalls", [])
+        assert isinstance(halls, list), "diningHalls should be a list"
+        self._print_payload("GET /menus/summary?mealType", payload)
+
+        print(f"[PASS] GET /menus/summary?mealType={ctx.meal_type} ({len(halls)} halls)")
+
+    async def test_save_and_delete_favorite(self, ctx: TestContext) -> None:
+        """Test POST /favorites and DELETE /favorites/{id} round-trip."""
+
+        # First, get a combo to favorite
+        combos_resp = self._request(
+            "GET",
+            "/recommendations/combo",
+            params={
+                "user_id": str(ctx.user_id),
+                "date": ctx.target_date.isoformat(),
+                "mealType": ctx.meal_type,
+            },
+        )
+        assert combos_resp.status_code == 200, f"Combo fetch failed: {combos_resp.status_code}"
+        combos = combos_resp.json().get("combos", [])
+        if not combos:
+            print("[SKIP] POST /favorites — no combos available to favorite")
+            return
+
+        combo_id = combos[0]["id"]
+
+        # Keep this test idempotent across repeated runs.
+        existing_fav = await self._fetch_one(
+            """
+            SELECT id
+            FROM favorites
+            WHERE user_id = CAST(:user_id AS uuid)
+              AND combo_id = CAST(:combo_id AS uuid)
+            LIMIT 1
+            """,
+            {"user_id": str(ctx.user_id), "combo_id": combo_id},
+        )
+        if existing_fav:
+            existing_fav_id = str(existing_fav[0])
+            cleanup_resp = self._request(
+                "DELETE",
+                f"/favorites/{existing_fav_id}",
+                params={"user_id": str(ctx.user_id)},
+            )
+            assert cleanup_resp.status_code == 200, (
+                "Failed to clean up pre-existing favorite "
+                f"{existing_fav_id}: {cleanup_resp.status_code} {cleanup_resp.text}"
+            )
+
+        # Save favorite
+        save_resp = self._request(
+            "POST",
+            "/favorites",
+            params={"user_id": str(ctx.user_id)},
+            json={"comboId": combo_id},
+        )
+        assert save_resp.status_code == 201, (
+            f"POST /favorites failed: {save_resp.status_code} {save_resp.text}"
+        )
+
+        save_body = save_resp.json()
+        favorite_id = save_body.get("id")
+        assert favorite_id is not None, "POST /favorites response missing id"
+        self._print_payload("POST /favorites", save_body)
+
+        # Verify in DB
+        fav_row = await self._fetch_one(
+            "SELECT id, user_id, combo_id FROM favorites WHERE id = CAST(:fav_id AS uuid)",
+            {"fav_id": favorite_id},
+        )
+        assert fav_row is not None, f"Favorite id={favorite_id} not found in DB"
+        assert str(fav_row[1]) == str(ctx.user_id), "Favorite user_id mismatch"
+
+        print("[PASS] POST /favorites (DB insert verified)")
+
+        # Test duplicate (should 409)
+        dup_resp = self._request(
+            "POST",
+            "/favorites",
+            params={"user_id": str(ctx.user_id)},
+            json={"comboId": combo_id},
+        )
+        assert dup_resp.status_code == 409, (
+            f"Duplicate POST /favorites should return 409, got {dup_resp.status_code}"
+        )
+        print("[PASS] POST /favorites duplicate returns 409")
+
+        # Delete favorite
+        del_resp = self._request(
+            "DELETE",
+            f"/favorites/{favorite_id}",
+            params={"user_id": str(ctx.user_id)},
+        )
+        assert del_resp.status_code == 200, (
+            f"DELETE /favorites/{favorite_id} failed: {del_resp.status_code} {del_resp.text}"
+        )
+        self._print_payload(f"DELETE /favorites/{favorite_id}", del_resp.json())
+
+        # Verify deletion
+        fav_row_after = await self._fetch_one(
+            "SELECT id FROM favorites WHERE id = CAST(:fav_id AS uuid)",
+            {"fav_id": favorite_id},
+        )
+        assert fav_row_after is None, "Favorite should be deleted from DB"
+
+        print("[PASS] DELETE /favorites (DB deletion verified)")
+
+    async def test_get_addons(self, ctx: TestContext) -> None:
+        """Test GET /recommendations/addons returns suggestions and quick add-ons."""
+        response = self._request(
+            "GET",
+            "/recommendations/addons",
+            params={
+                "user_id": str(ctx.user_id),
+                "date": ctx.target_date.isoformat(),
+                "mealType": ctx.meal_type,
+            },
+        )
+        assert response.status_code == 200, (
+            f"GET /recommendations/addons failed: {response.status_code} {response.text}"
+        )
+
+        payload = response.json()
+        assert "mealType" in payload, "Addons response missing mealType"
+        assert "suggestions" in payload, "Addons response missing suggestions"
+        assert "quickAddons" in payload, "Addons response missing quickAddons"
+        assert isinstance(payload["suggestions"], list), "suggestions should be a list"
+        assert isinstance(payload["quickAddons"], list), "quickAddons should be a list"
+        self._print_payload("GET /recommendations/addons", payload)
+
+        # Verify suggestion items have expected fields
+        for item in payload["suggestions"]:
+            assert "id" in item and "name" in item, "Suggestion item missing id or name"
+            assert "calories" in item, "Suggestion item missing calories"
+
+        # Verify quick add-ons are low-calorie
+        for item in payload["quickAddons"]:
+            assert "id" in item and "name" in item, "Quick addon item missing id or name"
+            if item.get("calories") is not None:
+                assert item["calories"] < 150, (
+                    f"Quick addon '{item['name']}' has {item['calories']} cal (expected <150)"
+                )
+
+        print(
+            f"[PASS] GET /recommendations/addons "
+            f"({len(payload['suggestions'])} suggestions, {len(payload['quickAddons'])} quick add-ons)"
+        )
+
 
 async def run_tests(args: argparse.Namespace) -> int:
     tester = HomeScreenApiTester(
@@ -567,7 +731,10 @@ async def run_tests(args: argparse.Namespace) -> int:
         await tester.test_get_combos(context)
         await tester.test_get_daily_goals(context)
         await tester.test_get_menu_summary(context)
+        await tester.test_get_menu_summary_with_meal_type(context)
         await tester.test_post_log_meal(context, keep_data=args.keep_data)
+        await tester.test_save_and_delete_favorite(context)
+        await tester.test_get_addons(context)
 
         print("\nAll homescreen API integration checks passed.")
         return 0

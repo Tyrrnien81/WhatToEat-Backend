@@ -1,4 +1,4 @@
-my-understanding/
+personal-docs/
 log/
 data/**/*.json
 
@@ -12,6 +12,9 @@ venv/
 
 # Environment variables
 .env
+
+# Local npm scratch (supabase-js smoke tests)
+tmp-sb-test/
 
 # OS files
 .DS_Store

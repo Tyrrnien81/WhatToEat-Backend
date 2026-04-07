@@ -13,17 +13,21 @@ class FoodItemResponse(BaseModel):
     carbs: float | None = None
     fat: float | None = None
     station: str | None = None
+    servingSizeAmount: str | None = None
+    servingSizeUnit: str | None = None
 
 
 class ComboResponse(BaseModel):
     id: str
     name: str
+    label: str | None = None
     items: list[FoodItemResponse]
     totalCalories: float
     totalProtein: float
     totalCarbs: float
     totalFat: float
     diningHall: str
+    logged: bool = False
 
 
 class CombosListResponse(BaseModel):
@@ -91,3 +95,37 @@ class LogMealRequest(BaseModel):
 class LogMealResponse(BaseModel):
     mealLogId: int
     message: str
+
+
+# --- Favorites ---
+
+class SaveFavoriteRequest(BaseModel):
+    comboId: str
+
+
+class SaveFavoriteResponse(BaseModel):
+    id: str
+    message: str
+
+
+class DeleteFavoriteResponse(BaseModel):
+    message: str
+
+
+# --- Add-ons ---
+
+class AddonFoodItem(BaseModel):
+    id: int
+    name: str
+    calories: float | None = None
+    protein: float | None = None
+    carbs: float | None = None
+    fat: float | None = None
+    station: str | None = None
+    icons: list[str] = []
+
+
+class AddonsResponse(BaseModel):
+    mealType: str
+    suggestions: list[AddonFoodItem]
+    quickAddons: list[AddonFoodItem]

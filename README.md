@@ -1,6 +1,12 @@
 # WhatToEat Backend
 
-A backend service for a UW-Madison dining hall meal recommendation app. Helps students browse dining hall menus, get personalized meal recommendations based on nutrition goals, track meals, and engage with a food-focused community.
+A FastAPI backend for the WhatToEat app (UW-Madison dining workflow).
+
+This repository currently focuses on:
+- Homescreen recommendation and meal logging APIs
+- Dining hall browsing APIs
+- Community post/like/reply APIs
+- Menu data ingestion scripts and integration test scripts
 
 ## Tech Stack
 
@@ -10,109 +16,123 @@ A backend service for a UW-Madison dining hall meal recommendation app. Helps st
 | Framework | FastAPI |
 | ORM | SQLAlchemy (async) |
 | Database | PostgreSQL (Supabase) |
-| Cache | Redis |
-| Object Storage | AWS S3 |
-| Auth | Google OAuth2 + Custom JWT |
-| Scheduler | APScheduler (daily Nutrislice ingestion) |
-| Deployment | AWS (EC2/ECS) |
-| DB Hosting | Supabase (managed Postgres, us-west-2) |
+| Validation | Pydantic v2 |
 
-## Features (MVP)
+## Current API Status (2026-04-07)
 
-1. **Authentication** — Email/password signup & login, Google OAuth, password reset via OTP, email verification
-2. **Menu Ingestion** — Automated daily ingestion from Nutrislice API for 6 UW-Madison dining halls
-3. **Menu Browsing** — Search, filter, and favorite menu items across all dining halls
-4. **Meal Recommendations** — Personalized meal combos optimized via linear programming to match user nutrition targets
-5. **Meal Tracking** — Log meals, view daily nutrition summary vs. goals
-6. **Community** — Posts with dining hall tags, likes, and comments
-7. **Scan** — Search-based food lookup and nutrition logging (ML recognition planned for v2)
+Implemented and tested in this branch:
+- Homescreen
+	- `GET /recommendations/combo`
+	- `GET /goals/daily`
+	- `GET /menus/summary`
+	- `POST /meals/log`
+	- `POST /favorites`
+	- `DELETE /favorites/{favorite_id}`
+	- `GET /recommendations/addons`
+- Dining Halls
+	- `GET /dining-halls`
+	- `GET /dining-halls/{hall_id}`
+	- `GET /dining-halls/{hall_id}/stations`
+	- `GET /dining-halls/{hall_id}/menus`
+	- `GET /dining-halls/full`
+- Community
+	- `GET /community/posts`
+	- `POST /community/posts`
+	- `GET /community/posts/{post_id}`
+	- `DELETE /community/posts/{post_id}`
+	- `POST /community/posts/{post_id}/likes`
+	- `DELETE /community/posts/{post_id}/likes`
+	- `POST /community/posts/{post_id}/replies`
+	- `POST /community/replies/{reply_id}/replies`
+	- `POST /community/replies/{reply_id}/likes`
+	- `DELETE /community/replies/{reply_id}/likes`
+
+Planned next domains:
+- Questionnaire
+- Scan
+- Profile
+- Auth/session hardening
 
 ## Project Structure
 
 ```
 whattoeat-backend/
 ├── app/
-│   ├── main.py                  # FastAPI entry point
-│   ├── config.py                # Settings (env vars, DB, JWT)
-│   ├── database.py              # Async SQLAlchemy engine & session
-│   ├── dependencies.py          # Shared dependencies (auth, db session)
-│   ├── routers/                 # Route handlers per domain
-│   │   ├── auth.py
-│   │   └── favorite.py
-│   ├── models/                  # SQLAlchemy models
+│   ├── main.py                  # FastAPI entry point + router registration
+│   ├── config.py                # Settings (currently DATABASE_URL)
+│   ├── database.py              # Async SQLAlchemy engine/session/base
+│   ├── models/
 │   │   ├── user.py
-│   │   └── favorite.py
-│   ├── schemas/                 # Pydantic request/response schemas
-│   │   ├── auth.py
-│   │   └── favorite.py
-│   ├── services/                # Business logic
-│   │   ├── auth_service.py
-│   │   └── favorite_service.py
-│   └── utils/                   # JWT, OAuth helpers
-│       ├── jwt.py
-│       ├── google_oauth.py
-│       └── email.py
+│   │   ├── menu.py
+│   │   ├── tracking.py
+│   │   └── community.py
+│   ├── schemas/
+│   │   ├── homescreen.py
+│   │   ├── dining_hall.py
+│   │   └── community.py
+│   ├── services/
+│   │   ├── homescreen_service.py
+│   │   ├── dining_hall_service.py
+│   │   └── community_service.py
+│   ├── routers/
+│   │   ├── homescreen.py
+│   │   ├── dining_hall.py
+│   │   └── community.py
+│   └── utils/
 ├── scripts/
-│   └── ingest_json.py           # Nutrislice JSON → Supabase ingestion
+│   ├── ingest_json.py
+│   ├── test_homescreen_api.py
+│   ├── test_dining_hall_api.py
+│   └── test_community_api.py
+├── data/                        # Scraped Nutrislice JSON snapshots by date
 ├── sql/
-│   └── init.sql                 # Full DB schema (16 tables)
-├── scraper.py                   # Nutrislice menu scraper
-├── docs/                        # Per-endpoint API specs
+│   ├── init.sql
+│   └── *.sql                    # Additional migration/ops SQL files
+├── docs/
+│   └── api/                     # Per-domain API documentation
+├── scraper.py                   # Nutrislice menu scraper entry
 └── requirements.txt
 ```
 
 Each domain follows the pattern: **model → schema → service → router**.
 
-## Database Schema
+## Auth Note (Current)
 
-**16 tables** across 4 phases (all live in Supabase):
+The current implemented APIs use `user_id` query parameters for user-scoped operations in local/integration flows.
 
-| Phase | Tables | Count |
-|-------|--------|-------|
-| 0 — Auth | `users`, `verification_codes`, `refresh_tokens` | 3 |
-| 1 — Menu & Food | `restaurants`, `meal_types`, `foods`, `food_icons`, `menu_snapshots`, `menu_sections`, `food_nutrition`, `food_icon_assignments`, `menu_section_items` | 9 |
-| 2 — User Preferences & Tracking | `user_preferences`, `meal_logs`, `meal_log_items` | 3 |
-| 3 — Favorites | `favorites` | 1 |
+JWT header-based enforcement is documented in planning/docs and intended for production-grade auth hardening.
 
-Full schema: [`sql/init.sql`](sql/init.sql) | Column-level docs: [`docs/db-doc.md`](docs/db-doc.md)
+## API Documentation
 
-## API Overview
+- API doc index: [docs/api/README.md](docs/api/README.md)
+- Community detail doc: [docs/api/community/community.md](docs/api/community/community.md)
+- Dining halls docs: [docs/api/dining-halls/README.md](docs/api/dining-halls/README.md)
+- Homescreen docs: [docs/api/homescreen/README.md](docs/api/homescreen/README.md)
 
-All protected endpoints require a JWT token in the `Authorization: Bearer <token>` header.
+## Database
 
-| Service | Key Endpoints | Auth Required |
-|---------|--------------|---------------|
-| **Auth** | `POST /auth/signup`, `/auth/signin`, `/auth/google`, `/auth/forgot-pw`, `/auth/reset-pw`, `/auth/verify-email`, `/auth/refresh-token` | No (public) |
-| **Questionnaire** | `POST /questionnaire`, `GET/PATCH /users/me/preferences` | Yes |
-| **Home** | `GET /recommendations/combo`, `GET /goals/today`, `GET /menus/summary`, `POST /log-meal` | Yes |
-| **Dining Hall** | `GET /dining-hall`, `GET /dining-hall/:id/stations/menu`, `GET /dining-hall/:id/ai-pick` | Mixed |
-| **Scan** | `POST /scan`, `POST /scan/log` | Yes |
-| **Community** | `GET/POST /community/posts`, `POST/DELETE .../like`, `GET/POST .../comments` | Mixed |
-| **Profile** | `GET/PATCH /users/me`, `GET/POST/DELETE /users/me/food-log`, `POST /users/me/avatar` | Yes |
+Schema sources:
+- Base schema SQL: [sql/init.sql](sql/init.sql)
+- SQLAlchemy models (including community tables):
+	- `app/models/user.py`
+	- `app/models/menu.py`
+	- `app/models/tracking.py`
+	- `app/models/community.py`
 
-Full API documentation: [docs/api/README.md](docs/api/README.md). Personal notes and drafts live under `personal-docs/` (gitignored).
+## Test Scripts
 
-## Implementation Progress
+Run domain integration tests:
 
-- [x] **Project Scaffold + Auth** — FastAPI setup, user models, auth endpoints (signup/signin/Google OAuth/password reset/email verification), JWT middleware
-- [x] **Database Init** — All 16 tables created in Supabase via `sql/init.sql`
-- [x] **Data Ingestion** — `scripts/ingest_json.py` loads Nutrislice JSON exports into Supabase (Gordon Avenue Market ingested)
-- [x] **Favorites API** — `POST /favorites` (JSONB snapshot, 409 on duplicate), `DELETE /favorites/{id}` (ownership check)
-- [ ] **Dining Halls API** — List halls, get menus/stations (tables + data exist, endpoints not built)
-- [ ] **Homescreen API** — `GET /recommendations/combo`, `GET /goals/today`, `POST /log-meal` (P0 — powers the core frontend flow)
-- [ ] **Questionnaire API** — Submit/get/update user dietary preferences
-- [ ] **Profile API** — User profile CRUD, food logging, avatar upload
-- [ ] **Community API** — Posts, likes, comments (tables not yet created)
-- [ ] **Scan API** — Search-based food lookup (MVP)
-- [ ] **Recommendation Engine** — Linear programming optimizer for meal combos
+```bash
+python scripts/test_homescreen_api.py --base-url http://127.0.0.1:8000
+python scripts/test_dining_hall_api.py --base-url http://127.0.0.1:8000
+python scripts/test_community_api.py --base-url http://127.0.0.1:8000
+```
 
-### API Priority (from frontend button audit)
-
-| Priority | Endpoints | Why |
-|----------|-----------|-----|
-| **P0** | `GET /recommendations/combo`, `GET /goals/today`, `POST /log-meal` | Powers date pills, hall cards, "Log This Meal" button |
-| **P1** | Food swap alternatives, quick add-ons | Swipe-to-swap, extra meal items |
-| **P2** | Favorites (done), Community, Scan | Backend-ahead or lower usage |
+Each script:
+- Resolves/creates test context as needed
+- Auto-starts local uvicorn if not already running
+- Verifies key API responses against DB state
 
 ## Getting Started
 
@@ -129,10 +149,9 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Set up environment variables
-# Copy .env.example to .env and fill in your Supabase credentials:
-#   DATABASE_URL=postgresql+asyncpg://<user>:<password>@<host>:6543/postgres
-# You can find the connection string in your Supabase project under
-# Settings → Database → Connection string → URI (use the "connection pooling" URI on port 6543).
+cp .env.example .env
+# Required:
+# DATABASE_URL=postgresql+asyncpg://<user>:<password>@<host>:6543/postgres
 
 # Start the server
 uvicorn app.main:app --reload
@@ -143,21 +162,12 @@ uvicorn app.main:app --reload
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | Supabase PostgreSQL connection string (e.g. `postgresql+asyncpg://postgres.<ref>:<password>@aws-0-us-east-1.pooler.supabase.com:6543/postgres`) |
-| `REDIS_URL` | Redis connection string |
-| `JWT_SECRET` | Secret key for JWT signing |
-| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
-| `AWS_ACCESS_KEY_ID` | AWS credentials for S3 |
-| `AWS_SECRET_ACCESS_KEY` | AWS credentials for S3 |
-| `AWS_S3_BUCKET` | S3 bucket name for media uploads |
+| `DATABASE_URL` | Postgres connection string for async SQLAlchemy |
 
 
 ## Out of Scope (v2+)
 
-- Apple/GitHub auth providers
-- Real-time dining hall occupancy
-- Push notifications
-- Weekly/monthly nutrition statistics
-- Friend features / social meal sharing
+- Production auth/session enforcement (JWT middleware integration)
 - ML-based food scanning
-- Multi-school support
+- Realtime features and notifications
+- Multi-school expansion

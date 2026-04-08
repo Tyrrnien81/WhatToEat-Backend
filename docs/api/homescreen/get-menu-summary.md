@@ -8,15 +8,15 @@ Retrieve today's highlighted menu items from each dining hall, filtered and rank
 
 ### Headers
 
-```http
-Authorization: Bearer <JWT token>
-```
+None required.
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
+| `user_id` | string (UUID) | Yes | User ID |
 | `date` | string | No | Target date (`YYYY-MM-DD`). Defaults to today. |
+| `mealType` | string | No | Filter by meal period: `breakfast`, `lunch`, or `dinner` |
 
 ### Body
 
@@ -31,12 +31,11 @@ None.
   "date": "2026-03-23",
   "diningHalls": [
     {
-      "id": "hall-uuid",
+      "id": 1,
       "name": "Gordon Avenue Market",
-      "status": "open",
       "recommendedItems": [
         {
-          "id": "food-uuid",
+          "id": 201,
           "name": "Grilled Salmon",
           "calories": 400,
           "protein": 35,
@@ -46,7 +45,7 @@ None.
           "icons": ["halal"]
         },
         {
-          "id": "food-uuid",
+          "id": 202,
           "name": "Quinoa Bowl",
           "calories": 320,
           "protein": 12,
@@ -65,16 +64,15 @@ None.
 | --- | --- | --- |
 | `date` | string | Date the summary is for |
 | `diningHalls` | array | List of dining halls with their recommended items |
-| `diningHalls[].id` | string | Dining hall identifier |
+| `diningHalls[].id` | number | Dining hall identifier |
 | `diningHalls[].name` | string | Dining hall name |
-| `diningHalls[].status` | string | Current status: `open`, `closing_soon`, or `closed` |
 | `diningHalls[].recommendedItems` | array | Top menu items at this hall matching user preferences |
 
 ### Errors
 
 | Status | Description |
 | --- | --- |
-| `401 Unauthorized` | Invalid or missing JWT token |
+| `422 Unprocessable Entity` | Missing or invalid `user_id` query parameter |
 
 ## Notes
 

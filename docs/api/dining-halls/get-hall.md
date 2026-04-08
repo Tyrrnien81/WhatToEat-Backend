@@ -1,6 +1,6 @@
 # GET /dining-halls/:hallId
 
-Retrieve detailed information for a specific dining hall, including location, operating hours, current status, and description.
+Retrieve detailed metadata for a specific dining hall.
 
 ## Request
 
@@ -26,17 +26,9 @@ None.
 {
   "id": 45372,
   "name": "Gordon Avenue Market",
-  "location": "770 W Dayton St",
-  "status": "open",
-  "hours": {
-    "breakfast": "7:00 AM – 10:00 AM",
-    "lunch": "11:00 AM – 2:00 PM",
-    "dinner": "5:00 PM – 9:00 PM"
-  },
-  "description": "A food court style dining hall featuring multiple stations including pizza, grill, bakery, and international cuisine.",
-  "emoji": "🍕",
-  "latitude": 43.0722,
-  "longitude": -89.4008
+  "externalRestaurantId": 45372,
+  "availableMealTypes": ["Breakfast", "Lunch", "Dinner"],
+  "availableDates": ["2026-04-07", "2026-04-06", "2026-04-05"]
 }
 ```
 
@@ -44,13 +36,9 @@ None.
 | --- | --- | --- |
 | `id` | number | Dining hall identifier |
 | `name` | string | Dining hall name |
-| `location` | string | Physical address |
-| `status` | string | Current status: `open`, `closing_soon`, or `closed` |
-| `hours` | object | Operating hours by meal period |
-| `description` | string | Short description of the dining hall |
-| `emoji` | string | Emoji identifier for UI display |
-| `latitude` | number | GPS latitude for map/proximity features |
-| `longitude` | number | GPS longitude for map/proximity features |
+| `externalRestaurantId` | number | External Nutrislice restaurant ID |
+| `availableMealTypes` | string[] | Meal types available for this hall |
+| `availableDates` | string[] | Most recent available service dates |
 
 ### Errors
 
@@ -60,5 +48,4 @@ None.
 
 ## Notes
 
-- Data is read from the `restaurants` table.
-- The `status` is computed at request time based on `operating_hours` and the current time.
+- `availableMealTypes` and `availableDates` are derived from existing menu snapshots.

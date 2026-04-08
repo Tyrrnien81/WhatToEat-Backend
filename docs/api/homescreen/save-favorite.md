@@ -6,9 +6,13 @@ Save a recommended meal combo to the user's favorites. When a user taps the like
 
 ### Headers
 
-```http
-Authorization: Bearer <JWT token>
-```
+None required.
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | string (UUID) | Yes | User ID saving the favorite |
 
 ### Body
 
@@ -42,8 +46,7 @@ Authorization: Bearer <JWT token>
 
 | Status | Description |
 | --- | --- |
-| `400 Bad Request` | Invalid or missing combo ID |
-| `401 Unauthorized` | Invalid or missing JWT token |
+| `422 Unprocessable Entity` | Missing required request fields |
 | `409 Conflict` | This combo is already in the user's favorites |
 
 ## Notes

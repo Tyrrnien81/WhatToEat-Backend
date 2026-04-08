@@ -1,6 +1,6 @@
 # GET /dining-halls/:hallId/stations
 
-Retrieve all food stations within a specific dining hall. Stations represent distinct serving areas (e.g. Grill, Salad Bar, Pizza) within the hall.
+Retrieve all food stations within a specific dining hall for a given date and meal type.
 
 ## Request
 
@@ -14,6 +14,13 @@ None required (public endpoint).
 | --- | --- | --- |
 | `hallId` | number | The unique ID of the dining hall |
 
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `date` | string | No | Menu date (`YYYY-MM-DD`). Defaults to today. |
+| `mealType` | string | No | Meal period filter (`breakfast`, `lunch`, `dinner`) |
+
 ### Body
 
 None.
@@ -25,27 +32,20 @@ None.
 ```json
 {
   "hallId": 45372,
-  "hallName": "Gordon Avenue Market",
+  "date": "2026-03-23",
+  "mealType": "dinner",
   "stations": [
     {
-      "id": 146701,
-      "name": "1849",
-      "position": 1
+      "station": "1849",
+      "itemCount": 12
     },
     {
-      "id": 146703,
-      "name": "Gordon Buona Cucina",
-      "position": 2
+      "station": "Gordon Buona Cucina",
+      "itemCount": 8
     },
     {
-      "id": 146706,
-      "name": "Gordon Capital City Pizza",
-      "position": 3
-    },
-    {
-      "id": 327206,
-      "name": "Buckingham Bakery",
-      "position": 6
+      "station": "Gordon Capital City Pizza",
+      "itemCount": 6
     }
   ]
 }
@@ -54,11 +54,11 @@ None.
 | Field | Type | Description |
 | --- | --- | --- |
 | `hallId` | number | Dining hall identifier |
-| `hallName` | string | Dining hall name |
-| `stations` | array | List of stations in display order |
-| `stations[].id` | number | Station/section identifier (maps to `menu_sections.external_menu_id`) |
-| `stations[].name` | string | Station display name (from `section_options.display_name` in Nutrislice data) |
-| `stations[].position` | number | Display order within the hall |
+| `date` | string | Date used for lookup |
+| `mealType` | string \| null | Meal period filter used by the endpoint |
+| `stations` | array | List of station entries |
+| `stations[].station` | string | Station display name |
+| `stations[].itemCount` | number | Number of menu items in the station |
 
 ### Errors
 
@@ -68,6 +68,4 @@ None.
 
 ## Notes
 
-- Station data comes from the `menu_sections` table, which is populated during daily Nutrislice ingestion.
-- Station names correspond to specific food areas like `"Gordon Capital City Pizza"`, `"Great Greens"`, `"Fired Up"`, etc.
-- Stations may vary by day if the dining hall changes its offerings.
+- If no snapshots match the filters, the endpoint returns an empty `stations` list.

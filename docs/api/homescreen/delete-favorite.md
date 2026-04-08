@@ -6,15 +6,19 @@ Remove a previously saved combo from the user's favorites. Used when the user ta
 
 ### Headers
 
-```http
-Authorization: Bearer <JWT token>
-```
+None required.
 
 ### Path Parameters
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `favoriteId` | string (UUID) | The ID of the favorite record to remove |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | string (UUID) | Yes | User ID deleting the favorite |
 
 ### Body
 
@@ -34,11 +38,10 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `401 Unauthorized` | Invalid or missing JWT token |
 | `403 Forbidden` | Cannot delete another user's favorite |
 | `404 Not Found` | Favorite not found (already removed or invalid ID) |
 
 ## Notes
 
 - The favorite is permanently deleted from the `favorites` table.
-- Only the user who created the favorite can delete it — the server verifies ownership against the JWT.
+- Only the user who created the favorite can delete it.

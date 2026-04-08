@@ -8,14 +8,13 @@ Retrieve the user's daily nutrition goal progress. Returns target values and con
 
 ### Headers
 
-```http
-Authorization: Bearer <JWT token>
-```
+None required.
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
+| `user_id` | string (UUID) | Yes | User ID |
 | `date` | string | No | Target date (`YYYY-MM-DD`). Defaults to today. |
 
 ### Body
@@ -52,7 +51,7 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `401 Unauthorized` | Invalid or missing JWT token |
+| `422 Unprocessable Entity` | Missing or invalid `user_id` query parameter |
 
 ## Notes
 

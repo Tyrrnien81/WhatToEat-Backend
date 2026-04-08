@@ -8,13 +8,13 @@ Log a meal with one or more food items. Creates or finds an existing meal log en
 
 ### Headers
 
-```http
-Authorization: Bearer <JWT token>
-```
+None required.
 
 ### Query Parameters
 
-None.
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | string (UUID) | Yes | User ID logging the meal |
 
 ### Body
 
@@ -77,7 +77,6 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `401 Unauthorized` | Invalid or missing JWT token |
 | `422 Unprocessable Entity` | Invalid request body (missing required fields, bad date format) |
 
 ## Notes

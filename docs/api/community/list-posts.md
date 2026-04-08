@@ -1,6 +1,6 @@
 # GET /community/posts
 
-Retrieve a paginated feed of community posts including food photos and reviews related to dining halls.
+Retrieve a paginated feed of community posts.
 
 ## Request
 
@@ -14,7 +14,9 @@ None required (public endpoint).
 | --- | --- | --- | --- | --- |
 | `page` | number | No | `1` | Page number for pagination |
 | `limit` | number | No | `20` | Number of posts per page |
-| `hallId` | string | No | — | Filter posts by dining hall ID |
+| `q` | string | No | — | Search keyword for post content |
+| `hallTag` | string | No | — | Filter by dining hall tag (exact match) |
+| `user_id` | string (UUID) | No | — | Current user ID (enables `likedByMe`) |
 
 ### Body
 
@@ -26,24 +28,25 @@ None.
 
 ```json
 {
+  "page": 1,
+  "limit": 20,
+  "hasMore": true,
   "posts": [
     {
-      "id": "post-uuid",
+      "id": "550e8400-e29b-41d4-a716-446655440000",
       "author": {
-        "id": "user-uuid",
+        "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
         "name": "Jane Doe"
       },
-      "text": "Amazing grilled salmon today!",
+      "content": "Amazing grilled salmon today!",
+      "hallTag": "gordon-avenue-market",
       "imageUrl": "https://s3.amazonaws.com/whattoeat/posts/abc123.jpg",
-      "diningHall": "Gordon Avenue Market",
-      "likesCount": 12,
-      "commentsCount": 3,
-      "createdAt": "2026-03-18T12:30:00Z"
+      "likeCount": 12,
+      "replyCount": 3,
+      "createdAt": "2026-04-07T12:30:00",
+      "likedByMe": false
     }
-  ],
-  "total": 42,
-  "page": 1,
-  "limit": 20
+  ]
 }
 ```
 
@@ -54,15 +57,16 @@ None.
 | `posts[].author` | object | Post author info |
 | `posts[].author.id` | string | Author's user ID |
 | `posts[].author.name` | string | Author's display name |
-| `posts[].text` | string | Post caption or description |
+| `posts[].content` | string | Post content |
+| `posts[].hallTag` | string \| null | Dining hall tag associated with the post |
 | `posts[].imageUrl` | string | URL of the uploaded food photo (S3) |
-| `posts[].diningHall` | string | Associated dining hall name (if any) |
-| `posts[].likesCount` | number | Total number of likes |
-| `posts[].commentsCount` | number | Total number of comments |
+| `posts[].likeCount` | number | Total number of likes |
+| `posts[].replyCount` | number | Total number of replies |
 | `posts[].createdAt` | string | ISO 8601 creation timestamp |
-| `total` | number | Total number of posts matching the query |
+| `posts[].likedByMe` | boolean | Whether the current user liked this post |
 | `page` | number | Current page number |
 | `limit` | number | Posts per page |
+| `hasMore` | boolean | Whether there are more posts beyond current page |
 
 ### Errors
 
@@ -71,4 +75,4 @@ None expected.
 ## Notes
 
 - Posts are returned in reverse chronological order (newest first).
-- The `hallId` filter allows the client to show posts relevant to a specific dining hall page.
+- If `user_id` is omitted, `likedByMe` is always `false`.

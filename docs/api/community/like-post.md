@@ -1,4 +1,4 @@
-# POST /community/posts/:postId/like
+# POST /community/posts/:postId/likes
 
 Like a community post. This operation is idempotent — liking an already-liked post has no additional effect.
 
@@ -6,15 +6,19 @@ Like a community post. This operation is idempotent — liking an already-liked 
 
 ### Headers
 
-| Header | Value | Required |
-| --- | --- | --- |
-| `Authorization` | `Bearer <JWT token>` | Yes |
+None required.
 
 ### Path Parameters
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `postId` | string | The unique ID of the post to like |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | string (UUID) | Yes | User ID performing the like |
 
 ### Body
 
@@ -26,24 +30,24 @@ None.
 
 ```json
 {
-  "message": "Post liked",
-  "likesCount": 13
+  "liked": true,
+  "likeCount": 13,
+  "message": "Post liked"
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
+| `liked` | boolean | Whether the post is liked by current user |
+| `likeCount` | number | Updated like count for the post |
 | `message` | string | Confirmation message |
-| `likesCount` | number | Updated like count for the post |
 
 ### Errors
 
 | Status | Description |
 | --- | --- |
-| `401 Unauthorized` | Missing or invalid JWT token |
-| `404 Not Found` | Post not found |
+| `404 Not Found` | User not found or post not found |
 
 ## Notes
 
-- Likes are tracked in the `community_likes` table with a unique constraint on (`user_id`, `post_id`).
-- If the user has already liked the post, the request succeeds with no side effects (idempotent).
+- If already liked, response is still `200` with `message: "Post already liked"`.

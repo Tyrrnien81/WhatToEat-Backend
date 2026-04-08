@@ -1,25 +1,27 @@
 # 6. Community
 
-A social feed where users can share and browse dining hall food photos, reviews, and engage through likes and comments.
+A social feed where users can share and browse dining hall food posts and interact through threaded replies and likes.
 
 ## Endpoints
 
 | Method | Endpoint | Description | Auth | Docs |
 | --- | --- | --- | --- | --- |
 | GET | `/community/posts` | Retrieve a paginated feed of community posts | No | [list-posts.md](list-posts.md) |
-| POST | `/community/posts` | Create a new post with a photo and text | Yes | [create-post.md](create-post.md) |
-| GET | `/community/posts/:postId` | Retrieve a single post by ID | No | [get-post.md](get-post.md) |
-| DELETE | `/community/posts/:postId` | Delete your own post | Yes | [delete-post.md](delete-post.md) |
-| POST | `/community/posts/:postId/like` | Like a post | Yes | [like-post.md](like-post.md) |
-| DELETE | `/community/posts/:postId/like` | Unlike a post | Yes | [unlike-post.md](unlike-post.md) |
-| GET | `/community/posts/:postId/comments` | Retrieve comments on a post | No | [list-comments.md](list-comments.md) |
-| POST | `/community/posts/:postId/comments` | Add a comment to a post | Yes | [create-comment.md](create-comment.md) |
-| DELETE | `/community/posts/:postId/comments/:commentId` | Delete your own comment | Yes | [delete-comment.md](delete-comment.md) |
+| POST | `/community/posts` | Create a new post | Yes (`user_id` query) | [create-post.md](create-post.md) |
+| GET | `/community/posts/:postId` | Retrieve a post with threaded replies | No | [get-post.md](get-post.md) |
+| DELETE | `/community/posts/:postId` | Delete your own post | Yes (`user_id` query) | [delete-post.md](delete-post.md) |
+| POST | `/community/posts/:postId/likes` | Like a post | Yes (`user_id` query) | [like-post.md](like-post.md) |
+| DELETE | `/community/posts/:postId/likes` | Unlike a post | Yes (`user_id` query) | [unlike-post.md](unlike-post.md) |
+| POST | `/community/posts/:postId/replies` | Create a top-level reply on a post | Yes (`user_id` query) | [create-reply.md](create-reply.md) |
+| POST | `/community/replies/:replyId/replies` | Create a nested reply on a reply | Yes (`user_id` query) | [create-nested-reply.md](create-nested-reply.md) |
+| POST | `/community/replies/:replyId/likes` | Like a reply | Yes (`user_id` query) | [like-reply.md](like-reply.md) |
+| DELETE | `/community/replies/:replyId/likes` | Unlike a reply | Yes (`user_id` query) | [unlike-reply.md](unlike-reply.md) |
 
 ## Implementation Notes
 
 - Posts are stored in the `community_posts` table with references to the author (`users`) and optionally a dining hall.
-- Post images are uploaded to AWS S3 and the URL is stored in the `image_url` column.
-- Likes are tracked in the `community_likes` table (unique constraint on `user_id` + `post_id`).
-- Comments are stored in the `community_comments` table.
-- Pagination follows cursor/offset style with `page` and `limit` query parameters.
+- Post images are saved as URLs (`imageUrl`) and not uploaded through this endpoint directly.
+- Replies are stored in `community_replies` and support nesting using `parent_reply_id`.
+- Likes are tracked separately in `community_post_likes` and `community_reply_likes`.
+- Pagination uses `page` and `limit`, with `hasMore` returned instead of `total`.
+- User-specific behavior currently uses `user_id` query parameters in write endpoints.

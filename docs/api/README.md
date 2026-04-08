@@ -7,9 +7,12 @@
 - `PATCH` = Partially update an existing resource
 - `DELETE` = Remove a resource
 
-## Authentication Header
+## Authentication
 
-Endpoints that require user-specific data must include a valid JWT token in the request header:
+Some endpoints still document JWT usage for app-level auth flow.
+For recently implemented community and homescreen endpoints, user context is currently passed as `user_id` query parameters.
+
+JWT header format (when applicable):
 
 ```http
 Authorization: Bearer <JWT token>
@@ -24,5 +27,5 @@ Authorization: Bearer <JWT token>
 | 3 | Homescreen | [homescreen/](homescreen/README.md) | Meal recommendations, nutrition goals, menu favoriting |
 | 4 | Dining Halls | [dining-halls/](dining-halls/README.md) | Dining hall and menu browsing |
 | 5 | Scan | [scan/](scan/README.md) | Food photo recognition and nutrition logging |
-| 6 | Community | [community/](community/README.md) | Community posts, likes, and comments |
+| 6 | Community | [community/](community/README.md) | Community posts, likes, and threaded replies |
 | 7 | Profile | [profile/](profile/README.md) | User profile, food log, and account management |

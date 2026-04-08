@@ -1,6 +1,6 @@
 # POST /community/posts
 
-Create a new community post with a food photo and caption text.
+Create a new community post.
 
 ## Request
 
@@ -8,16 +8,29 @@ Create a new community post with a food photo and caption text.
 
 | Header | Value | Required |
 | --- | --- | --- |
-| `Authorization` | `Bearer <JWT token>` | Yes |
-| `Content-Type` | `multipart/form-data` | Yes |
+| `Content-Type` | `application/json` | Yes |
 
-### Body (`multipart/form-data`)
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `user_id` | string (UUID) | Yes | ID of the user creating the post |
+
+### Body (`application/json`)
+
+```json
+{
+  "content": "Amazing grilled salmon today!",
+  "hallTag": "gordon-avenue-market",
+  "imageUrl": "https://s3.amazonaws.com/whattoeat/posts/abc123.jpg"
+}
+```
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `image` | file | Yes | Photo of the food. Supported formats: JPEG, PNG. |
-| `text` | string | Yes | Post caption or description |
-| `hallId` | string | No | Associated dining hall ID |
+| `content` | string | Yes | Post text content |
+| `hallTag` | string | No | Dining hall tag |
+| `imageUrl` | string | No | Already-uploaded image URL |
 
 ## Response
 
@@ -39,10 +52,10 @@ Create a new community post with a food photo and caption text.
 
 | Status | Description |
 | --- | --- |
-| `400 Bad Request` | Missing required fields (image or text) |
-| `401 Unauthorized` | Missing or invalid JWT token |
+| `404 Not Found` | User not found |
+| `422 Unprocessable Entity` | Validation error or blank content |
 
 ## Notes
 
-- The uploaded image is stored in AWS S3 under the `posts/` prefix, and the resulting URL is saved in the `community_posts.image_url` column.
-- The `hallId` field links the post to a specific dining hall for filtering purposes.
+- The backend trims content and rejects blank values.
+- Image upload is handled outside this endpoint; send the final URL in `imageUrl`.

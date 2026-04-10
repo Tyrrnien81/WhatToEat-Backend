@@ -1,14 +1,14 @@
-# Questionnaire Service
+# 2. Questionnaire
 
-Collects and manages user preference data used for personalized meal recommendations. The questionnaire is submitted during onboarding (first login) and preferences can be edited later from the profile.
+Collects and manages user preference data used for personalized meal recommendations. The questionnaire is submitted during onboarding (first login) and preferences can be edited later from the profile. Supports unit conversion (ft/lb → cm/kg) and auto-calculates nutrition targets.
 
 ## Endpoints
 
-| Method | Endpoint | File | Description | JWT Required |
-| --- | --- | --- | --- | --- |
-| POST | `/questionnaire` | [submit.md](submit.md) | Save initial onboarding preferences | Yes |
-| GET | `/users/me/preferences` | [get-preferences.md](get-preferences.md) | Retrieve saved dietary preferences | Yes |
-| PATCH | `/users/me/preferences` | [update-preferences.md](update-preferences.md) | Update dietary preferences | Yes |
+| Method | Endpoint | Docs | Description | JWT Required | Status |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/questionnaire` | [submit.md](submit.md) | Save initial onboarding preferences (body metrics, diet, dislikes, allergens, favorite dining halls) | Yes | ✅ Built |
+| GET | `/users/me/preferences` | [get-preferences.md](get-preferences.md) | Retrieve saved dietary preferences and computed nutrition targets | Yes | ✅ Built |
+| PATCH | `/users/me/preferences` | [update-preferences.md](update-preferences.md) | Partially update dietary preferences; auto-recalculates targets | Yes | ✅ Built |
 
 ## Implementation Notes
 

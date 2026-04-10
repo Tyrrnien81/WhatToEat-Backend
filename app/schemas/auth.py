@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field
 
 
 class UserResponse(BaseModel):
@@ -12,8 +12,7 @@ class UserResponse(BaseModel):
 
 
 class UpsertProfileRequest(BaseModel):
-    email: Optional[EmailStr] = None
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=50)
 
 
 class MessageResponse(BaseModel):

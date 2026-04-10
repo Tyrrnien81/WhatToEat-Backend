@@ -16,6 +16,8 @@ Save the recognized food items from a scan session to the user's daily food log.
 ```json
 {
   "scanId": "scan-uuid",
+  "mealType": "Lunch",
+  "date": "2026-04-08",
   "items": [
     {
       "name": "Grilled Chicken Breast",
@@ -31,6 +33,8 @@ Save the recognized food items from a scan session to the user's daily food log.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `scanId` | string | No | Reference to the original scan session |
+| `mealType` | string | No | Meal slot label for logging (e.g. `Breakfast`, `Lunch`, `Dinner`) |
+| `date` | string | No | Log date (`YYYY-MM-DD`). Defaults to server date when omitted |
 | `items` | array | Yes | Food items to log |
 | `items[].name` | string | Yes | Food name |
 | `items[].calories` | number | Yes | Calorie count |

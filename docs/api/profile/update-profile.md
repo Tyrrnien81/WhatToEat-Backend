@@ -2,6 +2,8 @@
 
 Update the current user's profile information. Only include the fields to be updated — omitted fields remain unchanged.
 
+> **Status:** ✅ Implemented — `app/routers/profile.py` → `app/services/profile_service.py`
+
 ## Request
 
 ### Headers
@@ -48,8 +50,10 @@ Update the current user's profile information. Only include the fields to be upd
 | --- | --- |
 | `400 Bad Request` | Invalid field values |
 | `401 Unauthorized` | Missing or invalid JWT token |
+| `404 Not Found` | Profile not found |
 
 ## Notes
 
-- This endpoint uses PATCH semantics — only the fields included in the request body are updated.
-- Changing `weight` may trigger a recalculation of daily nutritional goals.
+- Uses PATCH semantics — only the fields included in the request body are updated.
+- `name` is updated on the `profiles` table. Body metric and diet fields (birthday, gender, height, weight, goalWeight, dietType) are updated on the `user_preferences` table.
+- If no `user_preferences` row exists for the user, one is created automatically.

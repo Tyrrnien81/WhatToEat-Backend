@@ -9,9 +9,15 @@ __pycache__/
 
 # Virtual environment
 venv/
+.venv/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+
+# Uploaded files (avatars, etc.)
+uploads/
 
 # Local npm scratch (supabase-js smoke tests)
 tmp-sb-test/

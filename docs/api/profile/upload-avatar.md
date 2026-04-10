@@ -2,6 +2,8 @@
 
 Upload or update the user's profile photo.
 
+> **Status:** ✅ Implemented — `app/routers/profile.py` → `app/services/profile_service.py`
+
 ## Request
 
 ### Headers
@@ -24,24 +26,25 @@ Upload or update the user's profile photo.
 ```json
 {
   "message": "Avatar updated successfully",
-  "avatarUrl": "https://s3.amazonaws.com/whattoeat/avatars/user123.jpg"
+  "avatarUrl": "/uploads/avatars/user-uuid.jpg"
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `message` | string | Confirmation message |
-| `avatarUrl` | string | URL of the uploaded profile photo (S3) |
+| `avatarUrl` | string | URL path of the uploaded profile photo |
 
 ### Errors
 
 | Status | Description |
 | --- | --- |
-| `400 Bad Request` | No image provided or unsupported file format |
+| `400 Bad Request` | No image provided, empty payload, or unsupported file format |
 | `401 Unauthorized` | Missing or invalid JWT token |
+| `404 Not Found` | Profile not found |
 
 ## Notes
 
-- The image is uploaded to AWS S3 under the `avatars/` prefix.
-- If the user already has an avatar, the previous image is replaced in S3.
-- The `users.avatar_url` column is updated with the new URL.
+- Currently stores files locally under `uploads/avatars/`. In production, swap to S3 and return full S3 URLs.
+- If the user already has an avatar, the previous file is overwritten.
+- The `profiles.avatar_url` column is updated with the new URL path.

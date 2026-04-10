@@ -60,8 +60,9 @@ Powers the main screen with personalized menu recommendations, daily nutrition t
 | GET | `/goals/daily` | Retrieve today's nutrition goal progress (calories, macros) for the status bar | Yes | ✅ Built |
 | GET | `/menus/summary` | Get today's highlighted menu items per dining hall, filtered by user preferences | Yes | ✅ Built |
 | POST | `/meals/log` | Log a meal with food items and snapshotted nutrition data | Yes | ✅ Built |
-| POST | `/save-menu` | Save a recommended combo to the user's favorites | Yes | Not built |
-| DELETE | `/delete-menu` | Remove a previously saved combo from the user's favorites | Yes | Not built |
+| POST | `/favorites` | Save a recommended combo to the user's favorites | Yes | ✅ Built |
+| DELETE | `/favorites/{favorite_id}` | Remove a previously saved combo from the user's favorites | Yes | ✅ Built |
+| GET | `/recommendations/addons` | Get addon recommendations and quick-add items for the selected meal period | Yes | ✅ Built |
 
 ---
 
@@ -71,10 +72,11 @@ Provides read-only access to dining hall information, station listings, and dail
 
 | Method | Endpoint | Description | JWT Required |
 | --- | --- | --- | --- |
-| GET | `/dining-hall` | List all available dining halls | No |
-| GET | `/dining-hall/:hallId` | Get details for a specific dining hall | No |
-| GET | `/dining-hall/:hallId/stations` | List all food stations within a specific dining hall | No |
-| GET | `/dining-hall/:hallId/stations/menu` | Get the menu items available at each station | No |
+| GET | `/dining-halls` | List all available dining halls | No |
+| GET | `/dining-halls/{hall_id}` | Get details for a specific dining hall | No |
+| GET | `/dining-halls/{hall_id}/stations` | List all food stations within a specific dining hall | No |
+| GET | `/dining-halls/{hall_id}/menus` | Get the menu items available at each station | No |
+| GET | `/dining-halls/full` | Get frontend-oriented nested hall/day/menu payload | No |
 
 ---
 
@@ -97,18 +99,29 @@ A social feed where users can share and browse dining hall food photos and posts
 | --- | --- | --- | --- |
 | GET | `/community/posts` | Retrieve a feed of community posts (food photos, reviews) related to dining halls | No |
 | POST | `/community/posts` | Create a new community post with a photo and text | Yes |
-| GET | `/community/posts/:postId` | Retrieve a single community post by ID | No |
-| DELETE | `/community/posts/:postId` | Delete a post authored by the current user | Yes |
+| GET | `/community/posts/{post_id}` | Retrieve a single community post by ID | No |
+| DELETE | `/community/posts/{post_id}` | Delete a post authored by the current user | Yes |
+| POST | `/community/posts/{post_id}/likes` | Like a post | Yes |
+| DELETE | `/community/posts/{post_id}/likes` | Unlike a post | Yes |
+| POST | `/community/posts/{post_id}/replies` | Create a top-level reply to a post | Yes |
+| POST | `/community/replies/{reply_id}/replies` | Create a nested reply to a reply | Yes |
+| POST | `/community/replies/{reply_id}/likes` | Like a reply | Yes |
+| DELETE | `/community/replies/{reply_id}/likes` | Unlike a reply | Yes |
 
 ---
 
 ## 7. Profile
 
-Manages the authenticated user's profile information and meal history log.
+Manages the authenticated user's profile information, account settings, and food consumption log.
 
 | Method | Endpoint | Description | JWT Required |
 | --- | --- | --- | --- |
-| GET | `/users/me` | Retrieve the current user's full profile | Yes |
-| GET | `/users/me/food-log` | Retrieve the user's historical meal log (all previously recorded meals) | Yes |
-| POST | `/users/me/food-log` | Manually add a past meal entry to the user's meal log | Yes |
-| PATCH | `/users/me` | Update the user's profile information (name, preferences, etc.) | Yes |
+| GET | `/users/me` | Retrieve the current user's full profile (including body metrics and preferences) | Yes |
+| PATCH | `/users/me` | Update profile information (name, body metrics, diet type) | Yes |
+| DELETE | `/users/me` | Permanently delete the user's account and all associated data | Yes |
+| POST | `/users/me/avatar` | Upload or update profile photo | Yes |
+| POST | `/users/me/change-password` | Change the user's password (email-based accounts only) | Yes |
+| GET | `/users/me/food-log` | Retrieve food consumption history with pagination and date filtering | Yes |
+| POST | `/users/me/food-log` | Manually add a food log entry | Yes |
+| DELETE | `/users/me/food-log/{entry_id}` | Delete a specific food log entry | Yes |
+| GET | `/users/me/food-log/summary` | Retrieve nutrition summary, streaks, and weight history | Yes |

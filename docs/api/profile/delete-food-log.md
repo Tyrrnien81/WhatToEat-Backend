@@ -1,6 +1,8 @@
-# DELETE /users/me/food-log/:entryId
+# DELETE /users/me/food-log/{entry_id}
 
 Delete a specific food log entry.
+
+> **Status:** ✅ Implemented — `app/routers/profile.py` → `app/services/profile_service.py`
 
 ## Request
 
@@ -14,7 +16,7 @@ Delete a specific food log entry.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `entryId` | string | The unique ID of the food log entry to delete |
+| `entry_id` | number | The unique ID of the food log entry to delete |
 
 ### Body
 
@@ -39,4 +41,5 @@ None.
 
 ## Notes
 
-- Users can only delete their own food log entries.
+- Users can only delete their own food log entries. Ownership is verified by joining `meal_log_items` → `meal_logs` → `user_id`.
+- If the deleted entry was the last item in its parent `meal_log`, the empty meal log is also removed.

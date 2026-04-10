@@ -2,6 +2,8 @@
 
 Retrieve the authenticated user's food consumption history with pagination and optional date filtering.
 
+> **Status:** ✅ Implemented — `app/routers/profile.py` → `app/services/profile_service.py`
+
 ## Request
 
 ### Headers
@@ -14,9 +16,9 @@ Retrieve the authenticated user's food consumption history with pagination and o
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `date` | string | No | Today | Filter by date (`YYYY-MM-DD`) |
+| `date` | string | No | — | Filter by date (`YYYY-MM-DD`). If omitted, returns all dates. |
 | `page` | number | No | `1` | Page number for pagination |
-| `limit` | number | No | `20` | Number of entries per page |
+| `limit` | number | No | `20` | Number of entries per page (max 100) |
 
 ### Body
 
@@ -30,7 +32,7 @@ None.
 {
   "entries": [
     {
-      "id": "entry-uuid",
+      "id": 42,
       "name": "Grilled Chicken Breast",
       "calories": 350,
       "protein": 30,
@@ -40,7 +42,7 @@ None.
       "loggedAt": "2026-03-18T12:00:00Z"
     },
     {
-      "id": "entry-uuid-2",
+      "id": 43,
       "name": "Banana",
       "calories": 105,
       "protein": 1,
@@ -59,14 +61,14 @@ None.
 | Field | Type | Description |
 | --- | --- | --- |
 | `entries` | array | List of food log entries |
-| `entries[].id` | string | Entry unique identifier |
+| `entries[].id` | number | Entry unique identifier (meal_log_items PK) |
 | `entries[].name` | string | Food name |
-| `entries[].calories` | number | Calorie count |
-| `entries[].protein` | number | Protein in grams |
-| `entries[].carbs` | number | Carbohydrates in grams |
-| `entries[].fat` | number | Total fat in grams |
+| `entries[].calories` | number \| null | Calorie count |
+| `entries[].protein` | number \| null | Protein in grams |
+| `entries[].carbs` | number \| null | Carbohydrates in grams |
+| `entries[].fat` | number \| null | Total fat in grams |
 | `entries[].source` | string | How the entry was logged: `scan`, `manual`, or `menu` |
-| `entries[].loggedAt` | string | ISO 8601 timestamp when the entry was logged |
+| `entries[].loggedAt` | string \| null | ISO 8601 timestamp when the entry was logged |
 | `total` | number | Total number of entries matching the query |
 | `page` | number | Current page number |
 | `limit` | number | Entries per page |
@@ -75,4 +77,10 @@ None.
 
 | Status | Description |
 | --- | --- |
+| `400 Bad Request` | Invalid date format |
 | `401 Unauthorized` | Missing or invalid JWT token |
+
+## Notes
+
+- Returns flat `meal_log_items` entries ordered by `logged_at` descending (most recent first).
+- Entries originate from manual input, scan results, or dining hall menu selections.

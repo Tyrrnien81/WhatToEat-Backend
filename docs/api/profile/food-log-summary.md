@@ -1,6 +1,8 @@
 # GET /users/me/food-log/summary
 
-Retrieve an aggregated nutrition summary, streak data, and weight history for the user's profile dashboard.
+Retrieve an aggregated nutrition summary and streak data for the user's profile dashboard.
+
+> **Status:** ✅ Implemented — `app/routers/profile.py` → `app/services/profile_service.py`
 
 ## Request
 
@@ -14,7 +16,7 @@ Retrieve an aggregated nutrition summary, streak data, and weight history for th
 
 | Parameter | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `range` | string | No | `week` | Time range: `week`, `month`, or `all` |
+| `range` | string | No | `week` | Time range: `week` (7 days), `month` (30 days), or `all` |
 
 ### Body
 
@@ -34,25 +36,21 @@ None.
   "totalMealsLogged": 18,
   "currentStreak": 5,
   "longestStreak": 12,
-  "weightHistory": [
-    { "date": "2026-03-12", "weight": 71 },
-    { "date": "2026-03-14", "weight": 70.5 },
-    { "date": "2026-03-18", "weight": 70 }
-  ]
+  "weightHistory": []
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `range` | string | Time range for this summary |
-| `averageDailyCalories` | number | Average daily calorie intake |
+| `averageDailyCalories` | number | Average daily calorie intake (rounded to 1 decimal) |
 | `averageDailyProtein` | number | Average daily protein in grams |
 | `averageDailyCarbs` | number | Average daily carbohydrates in grams |
 | `averageDailyFat` | number | Average daily fat in grams |
-| `totalMealsLogged` | number | Total meals logged in the period |
-| `currentStreak` | number | Current consecutive days with at least one log entry |
+| `totalMealsLogged` | number | Total individual food items logged in the period |
+| `currentStreak` | number | Current consecutive days with at least one log entry (counting back from today) |
 | `longestStreak` | number | Longest-ever consecutive logging streak |
-| `weightHistory` | array | Weight data points for charting |
+| `weightHistory` | array | Weight data points for charting (currently empty; requires weight tracking feature) |
 | `weightHistory[].date` | string | Date of the weight entry |
 | `weightHistory[].weight` | number | Weight in kilograms |
 
@@ -64,5 +62,6 @@ None.
 
 ## Notes
 
-- The `currentStreak` counts consecutive days (up to today) where the user logged at least one food item.
-- Weight history is derived from periodic weight updates via `PATCH /users/me`.
+- Averages are computed by dividing total macros by the number of distinct days with logged items (not by calendar days in the range).
+- The `currentStreak` counts consecutive days ending at today. If the user has not logged anything today, the streak is 0.
+- `weightHistory` is reserved for a future weight tracking feature and currently returns an empty array.

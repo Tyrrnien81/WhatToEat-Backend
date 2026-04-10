@@ -2,6 +2,8 @@
 
 Change the authenticated user's password. Requires the current password for verification.
 
+> **Status:** ✅ Implemented — `app/routers/profile.py` → `app/services/profile_service.py`
+
 ## Request
 
 ### Headers
@@ -39,11 +41,13 @@ Change the authenticated user's password. Requires the current password for veri
 
 | Status | Description |
 | --- | --- |
-| `400 Bad Request` | Current password is incorrect, or new password does not meet strength requirements |
+| `400 Bad Request` | Current password is incorrect, new password too short, or user is OAuth-only |
 | `401 Unauthorized` | Missing or invalid JWT token |
+| `501 Not Implemented` | Supabase credentials not configured on the server |
 
 ## Notes
 
 - The new password must be at least 8 characters.
-- The current password is verified against the stored hash before updating.
-- This endpoint is not available for users who signed up via Google OAuth (they have no local password).
+- The current password is verified by attempting a sign-in against the Supabase Auth API.
+- This endpoint is not available for users who signed up via Google OAuth (they have no local password). Returns `400` with an explanatory message.
+- Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` environment variables.

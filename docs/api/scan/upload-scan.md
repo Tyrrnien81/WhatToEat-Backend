@@ -41,7 +41,13 @@ Upload a food photo for AI-based recognition. The server processes the image and
       "carbs": 11,
       "fat": 1
     }
-  ]
+  ],
+  "summary": {
+    "kcal": 405,
+    "protein": 34,
+    "carbs": 16,
+    "fat": 13
+  }
 }
 ```
 
@@ -55,6 +61,11 @@ Upload a food photo for AI-based recognition. The server processes the image and
 | `items[].protein` | number | Protein in grams |
 | `items[].carbs` | number | Carbohydrates in grams |
 | `items[].fat` | number | Total fat in grams |
+| `summary` | object | Aggregate nutrition totals for quick display |
+| `summary.kcal` | number | Total calories across identified items |
+| `summary.protein` | number | Total protein in grams across identified items |
+| `summary.carbs` | number | Total carbohydrates in grams across identified items |
+| `summary.fat` | number | Total fat in grams across identified items |
 
 ### Errors
 

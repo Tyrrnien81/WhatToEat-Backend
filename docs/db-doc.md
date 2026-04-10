@@ -201,7 +201,7 @@ Stores onboarding questionnaire answers and auto-calculated nutrition targets. O
 | `id` | `INT` | Primary Key, Auto Increment | Preference record identifier |
 | `user_id` | `UUID` | FK → `users.id`, Unique | User reference |
 | `birthday` | `DATE` | Nullable | User's date of birth |
-| `gender` | `VARCHAR(10)` | Nullable | "male", "female", or "other" |
+| `gender` | `VARCHAR(10)` | Nullable | "male", "female", "other", or "prefer" |
 | `height` | `DECIMAL(5,1)` | Nullable | Height in cm |
 | `weight` | `DECIMAL(5,1)` | Nullable | Weight in kg |
 | `goal_weight` | `DECIMAL(5,1)` | Nullable | Target weight in kg |
@@ -212,6 +212,7 @@ Stores onboarding questionnaire answers and auto-calculated nutrition targets. O
 | `target_protein_g` | `INT` | Nullable | Daily protein target in grams |
 | `target_carbs_g` | `INT` | Nullable | Daily carbs target in grams |
 | `target_fat_g` | `INT` | Nullable | Daily fat target in grams |
+| `favorite_dining_halls` | `JSONB` | Default `'[]'` | Ordered array of preferred dining hall IDs (max 3) |
 | `created_at` | `TIMESTAMPTZ` | - | When preferences were first set |
 | `updated_at` | `TIMESTAMPTZ` | - | Last update timestamp |
 

@@ -25,6 +25,7 @@ class UserPreference(Base):
     target_protein_g: Mapped[int | None] = mapped_column(Integer, nullable=True)
     target_carbs_g: Mapped[int | None] = mapped_column(Integer, nullable=True)
     target_fat_g: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    favorite_dining_halls: Mapped[dict] = mapped_column(JSONB, server_default="'[]'::jsonb")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

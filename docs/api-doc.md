@@ -40,13 +40,13 @@ Handles user registration, email/password sign-in, Google OAuth, email verificat
 
 ## 2. Questionnaire
 
-Collects and manages user preference data used for personalized meal recommendations. Submitted during onboarding and editable from the profile.
+Collects and manages user preference data used for personalized meal recommendations. Submitted during onboarding and editable from the profile. Supports unit conversion (ft/lb → cm/kg) and auto-calculates nutrition targets.
 
-| Method | Endpoint | Description | JWT Required |
-| --- | --- | --- | --- |
-| POST | `/questionnaire` | Save initial user preferences (birthday, gender, height, weight, goal weight, diet type, dislikes, allergens) | Yes |
-| GET | `/users/me/preferences` | Retrieve the current user's saved dietary preferences | Yes |
-| PATCH | `/users/me/preferences` | Update the user's dietary preferences | Yes |
+| Method | Endpoint | Description | JWT Required | Status |
+| --- | --- | --- | --- | --- |
+| POST | `/questionnaire` | Save initial onboarding preferences (body metrics, diet, dislikes, allergens, favorite dining halls) with unit conversion | Yes | ✅ Built |
+| GET | `/users/me/preferences` | Retrieve the current user's saved dietary preferences and computed nutrition targets | Yes | ✅ Built |
+| PATCH | `/users/me/preferences` | Partially update dietary preferences; auto-recalculates targets when body metrics change | Yes | ✅ Built |
 
 ---
 

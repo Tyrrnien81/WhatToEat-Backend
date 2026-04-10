@@ -21,6 +21,8 @@ _ALLOWED_MIME_TYPES = {
 
 _ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".heif"}
 
+_MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MiB
+
 
 _FOOD_TEMPLATES = [
     [
@@ -98,6 +100,11 @@ async def scan_image(user_id: uuid.UUID, image: UploadFile, db: AsyncSession) ->
     raw = await image.read()
     if not raw:
         raise HTTPException(status_code=400, detail="Image payload is empty")
+    if len(raw) > _MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Image too large (max {_MAX_IMAGE_BYTES // (1024 * 1024)} MB)",
+        )
 
     items = _select_template(raw, image.filename or "upload.jpg")
     if not items:

@@ -70,3 +70,4 @@ Save the recognized food items from a scan session to the user's daily food log.
 - The client may allow the user to modify or remove items from the scan results before calling this endpoint.
 - Each logged item is persisted to the user's food log with the current timestamp.
 - The `scanId` field is optional and serves as a reference back to the original scan for auditing purposes.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

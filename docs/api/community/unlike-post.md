@@ -6,7 +6,9 @@ Remove the current user's like from a community post.
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Path Parameters
 
@@ -16,9 +18,7 @@ None required.
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID performing the unlike |
+None.
 
 ### Body
 
@@ -46,8 +46,10 @@ None.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Missing or invalid JWT |
 | `404 Not Found` | Post not found |
 
 ## Notes
 
 - If the user has not previously liked the post, response is still `200` with `message: "Post was not liked"`.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

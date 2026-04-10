@@ -37,7 +37,7 @@ app/
 │   └── auth_service.py      # Business logic: profile CRUD, logout
 ├── models/
 │   └── user.py              # Profile model (profiles table)
-├── dependencies.py          # JWT validation via Supabase JWKS
+├── dependencies.py          # JWT via Supabase JWKS; optional dev `?user_id=` when ALLOW_QUERY_USER_ID (homescreen/community/scan only)
 └── config.py                # Supabase URL, issuer, service role key
 ```
 

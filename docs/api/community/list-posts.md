@@ -6,7 +6,7 @@ Retrieve a paginated feed of community posts.
 
 ### Headers
 
-None required (public endpoint).
+Public endpoint. Optionally send `Authorization: Bearer <JWT>` so each post includes accurate `likedByMe` for the authenticated user (`sub`). Without auth, `likedByMe` is always `false`.
 
 ### Query Parameters
 
@@ -16,7 +16,6 @@ None required (public endpoint).
 | `limit` | number | No | `20` | Number of posts per page |
 | `q` | string | No | — | Search keyword for post content |
 | `hallTag` | string | No | — | Filter by dining hall tag (exact match) |
-| `user_id` | string (UUID) | No | — | Current user ID (enables `likedByMe`) |
 
 ### Body
 
@@ -70,9 +69,11 @@ None.
 
 ### Errors
 
-None expected.
+| Status | Description |
+| --- | --- |
+| `401 Unauthorized` | Invalid or expired JWT (only if `Authorization` was sent) |
 
 ## Notes
 
 - Posts are returned in reverse chronological order (newest first).
-- If `user_id` is omitted, `likedByMe` is always `false`.
+- Without a valid JWT, `likedByMe` is always `false`. Local dev only: if the server has `ALLOW_QUERY_USER_ID=true`, `?user_id=` can supply identity when the header is omitted (never use in production).

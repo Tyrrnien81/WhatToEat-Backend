@@ -8,13 +8,14 @@ Retrieve the user's daily nutrition goal progress. Returns target values and con
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID |
 | `date` | string | No | Target date (`YYYY-MM-DD`). Defaults to today. |
 
 ### Body
@@ -51,7 +52,8 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `422 Unprocessable Entity` | Missing or invalid `user_id` query parameter |
+| `401 Unauthorized` | Missing or invalid JWT |
+| `422 Unprocessable Entity` | Invalid query parameters |
 
 ## Notes
 
@@ -59,3 +61,4 @@ None.
 - Consumed values are aggregated from the `meal_logs` and `meal_log_items` tables for the specified date, joined with `food_nutrition` for nutritional data.
 - If no meals have been logged for the day, all `consumed` values return `0`.
 - This data may be cached in Redis with a short TTL and invalidated when a new meal is logged.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

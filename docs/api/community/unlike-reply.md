@@ -6,7 +6,9 @@ Remove a user's like from a reply.
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Path Parameters
 
@@ -16,9 +18,7 @@ None required.
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID performing the unlike |
+None.
 
 ### Body
 
@@ -40,8 +40,10 @@ None.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Missing or invalid JWT |
 | `404 Not Found` | Reply not found |
 
 ## Notes
 
 - If the reply was not liked by this user, response is still `200` with `message: "Reply was not liked"`.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

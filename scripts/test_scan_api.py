@@ -157,7 +157,11 @@ class ScanApiTester:
                 port,
             ],
             cwd=str(PROJECT_ROOT),
-            env={**os.environ, "WTE_SKIP_REEXEC": "1"},
+            env={
+                **os.environ,
+                "WTE_SKIP_REEXEC": "1",
+                "ALLOW_QUERY_USER_ID": os.environ.get("ALLOW_QUERY_USER_ID", "true"),
+            },
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

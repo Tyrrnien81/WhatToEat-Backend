@@ -73,6 +73,7 @@ Upload a food photo for AI-based recognition. The server processes the image and
 | --- | --- |
 | `400 Bad Request` | No image provided or unsupported file format |
 | `401 Unauthorized` | Missing or invalid JWT token |
+| `413 Payload Too Large` | Image exceeds size limit (10 MB) |
 | `422 Unprocessable Entity` | Could not identify any food in the image |
 
 ## Notes
@@ -80,3 +81,4 @@ Upload a food photo for AI-based recognition. The server processes the image and
 - Multiple food items may be identified from a single photo.
 - The `scanId` is used when subsequently calling `POST /scan/log` to persist the results.
 - Confidence scores below a threshold may indicate uncertain recognition — the client should allow the user to review and correct results before logging.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

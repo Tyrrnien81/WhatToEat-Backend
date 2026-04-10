@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies import get_optional_user_id_jwt_or_dev_query
 from app.schemas.dining_hall import (
     DiningHallListResponse,
     DiningHallDetailResponse,
@@ -27,7 +28,7 @@ async def list_dining_halls(
 @router.get("/full", response_model=FullDiningHallsResponse)
 async def get_dining_halls_full(
     date_param: str | None = Query(None, alias="date"),
-    user_id: uuid.UUID | None = Query(None),
+    user_id: uuid.UUID | None = Depends(get_optional_user_id_jwt_or_dev_query),
     db: AsyncSession = Depends(get_db),
 ):
     target_date = date.fromisoformat(date_param) if date_param else date.today()

@@ -6,7 +6,9 @@ Delete a community post authored by the current user.
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Path Parameters
 
@@ -16,9 +18,7 @@ None required.
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | Post author's user ID |
+None.
 
 ### Body
 
@@ -38,10 +38,12 @@ None.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Missing or invalid JWT |
 | `403 Forbidden` | Cannot delete another user's post |
 | `404 Not Found` | Post not found |
 
 ## Notes
 
 - Only the post author can delete their own post.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).
 - Deleting a post cascades to remove associated post likes, replies, and reply likes.

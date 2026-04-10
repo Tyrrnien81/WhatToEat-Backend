@@ -9,14 +9,15 @@
 
 ## Authentication
 
-Some endpoints still document JWT usage for app-level auth flow.
-For recently implemented community and homescreen endpoints, user context is currently passed as `user_id` query parameters.
+Protected routes require a **Supabase access token** in the header. The backend validates it against Supabase JWKS (`issuer` from `SUPABASE_ISSUER`). Identity is always the JWT `sub` claim (matches `users.id`).
 
-JWT header format (when applicable):
+JWT header format:
 
 ```http
 Authorization: Bearer <JWT token>
 ```
+
+**Local integration tests only:** when the server sets `ALLOW_QUERY_USER_ID=true` (never in production), personalized routes also accept `?user_id=<uuid>` if the header is absent. Production and staging clients must send the header only.
 
 ## Services
 

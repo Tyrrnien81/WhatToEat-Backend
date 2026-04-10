@@ -1,61 +1,37 @@
 # POST /auth/signin
 
-Sign in with email and password. Returns a JWT access token and the authenticated user's basic profile information.
+> **Handled by Supabase client-side.** This is NOT a backend endpoint.
 
-## Request
+Sign in with email and password. The frontend calls `supabase.auth.signInWithPassword()` directly. Supabase returns a JWT access token and refresh token. After successful auth, the frontend should call `POST /auth/profile` to sync the user's profile with the backend.
 
-### Headers
+## Frontend Usage
 
-None required (public endpoint).
-
-### Body
-
-```json
-{
-  "email": "user@example.com",
-  "password": "yourPassword123"
-}
+```typescript
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: "user@example.com",
+  password: "yourPassword123",
+});
 ```
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `email` | string | Yes | The user's registered email address |
-| `password` | string | Yes | The user's password |
-
-## Response
-
-### Success (`200 OK`)
+## Supabase Response
 
 ```json
 {
-  "token": "<JWT token>",
-  "refreshToken": "<refresh token>",
+  "session": {
+    "access_token": "<JWT>",
+    "refresh_token": "<refresh token>",
+    "expires_in": 3600
+  },
   "user": {
     "id": "uuid",
-    "email": "user@example.com",
-    "name": "John Doe"
+    "email": "user@example.com"
   }
 }
 ```
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `token` | string | JWT access token (expires in 24 hours) |
-| `refreshToken` | string | Refresh token for obtaining new access tokens |
-| `user.id` | string (UUID) | Unique user identifier |
-| `user.email` | string | User's email address |
-| `user.name` | string | User's display name |
-
-### Errors
-
-| Status | Description |
-| --- | --- |
-| `400 Bad Request` | Missing or invalid fields (e.g. empty email or password) |
-| `401 Unauthorized` | Incorrect email or password |
-| `401 Unauthorized` | Email not yet verified — user must verify before signing in |
-
 ## Notes
 
-- The user's email must be verified before sign-in is allowed. If unverified, the client should redirect to the email verification flow.
-- The JWT token should be stored securely on the client and included in the `Authorization: Bearer <token>` header for all protected endpoints.
-- Password is validated against the bcrypt hash stored in the database.
+- The user's email must be verified before sign-in is allowed.
+- After successful sign-in, call `POST /auth/profile` to ensure the backend profile exists.
+- Store the session using Supabase's built-in session management.
+- See [Supabase Auth docs](https://supabase.com/docs/reference/javascript/auth-signinwithpassword) for full reference.

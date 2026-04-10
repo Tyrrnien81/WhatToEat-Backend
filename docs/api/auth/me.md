@@ -1,14 +1,16 @@
 # GET /auth/me
 
-Retrieve the currently authenticated user's basic profile information, decoded from the JWT token. This is a lightweight endpoint used by the client to confirm the user's identity and display their info.
+Retrieve the currently authenticated user's profile from the database. Used by the client on app launch to validate the stored token and display the user's info.
+
+> **Status:** ✅ Implemented — `app/routers/auth.py` → `app/services/auth_service.py`
 
 ## Request
 
 ### Headers
 
-```http
-Authorization: Bearer <JWT token>
-```
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Body
 
@@ -20,17 +22,19 @@ None.
 
 ```json
 {
-  "id": "uuid",
-  "email": "user@example.com",
-  "name": "John Doe"
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "user@wisc.edu",
+  "name": "John Doe",
+  "avatar_url": null
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | string (UUID) | Unique user identifier |
-| `email` | string | User's email address |
-| `name` | string | User's display name |
+| `id` | string (UUID) | User identifier (matches Supabase `auth.users.id`) |
+| `email` | string \| null | User's email address |
+| `name` | string \| null | Display name |
+| `avatar_url` | string \| null | Profile photo URL |
 
 ### Errors
 
@@ -40,6 +44,6 @@ None.
 
 ## Notes
 
-- This endpoint decodes the JWT to extract user information. It may also query the database for the latest user data depending on implementation.
-- Used by the client on app launch to validate the stored token and retrieve the user's name/email for display.
-- For the full user profile (including preferences, weight, height, etc.), use `GET /users/me` from the Profile service instead.
+- If the user has authenticated via Supabase but has not yet called `POST /auth/profile`, this endpoint returns a minimal response with only `id` populated (from the JWT `sub` claim) and other fields as `null`.
+- For the full user profile including preferences and body metrics, use `GET /users/me` from the Profile service.
+- This is a lightweight endpoint; it queries the `profiles` table only.

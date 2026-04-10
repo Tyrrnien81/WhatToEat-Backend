@@ -1,49 +1,19 @@
 # POST /auth/refresh-token
 
-Refresh an expired JWT access token using a valid refresh token. Used on app launch and when API calls return `401` to maintain seamless user sessions without re-authentication.
+> **Handled by Supabase client-side.** This is NOT a backend endpoint.
 
-## Request
+Refresh an expired JWT access token. The Supabase JS SDK handles token refresh automatically via its built-in session management.
 
-### Headers
+## Frontend Usage
 
-None required (public endpoint).
-
-### Body
-
-```json
-{
-  "refreshToken": "<refresh token>"
-}
+```typescript
+// Automatic — Supabase SDK refreshes tokens before they expire.
+// Manual refresh (if needed):
+const { data, error } = await supabase.auth.refreshSession();
 ```
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| `refreshToken` | string | Yes | The refresh token issued during sign-in or a previous refresh |
-
-## Response
-
-### Success (`200 OK`)
-
-```json
-{
-  "token": "<new JWT access token>",
-  "refreshToken": "<new refresh token>"
-}
-```
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `token` | string | New JWT access token (expires in 24 hours) |
-| `refreshToken` | string | New refresh token (rotated for security) |
-
-### Errors
-
-| Status | Description |
-| --- | --- |
-| `401 Unauthorized` | Refresh token is invalid, expired, or has been revoked |
 
 ## Notes
 
-- Refresh token rotation is used — each refresh call issues a new refresh token and revokes the old one.
-- If a revoked or invalid refresh token is used, the request is rejected with `401`.
-- The client should call this endpoint automatically when receiving a `401` response from any protected endpoint, and retry the original request with the new access token.
+- The Supabase JS SDK automatically refreshes the access token before it expires, so manual refresh is rarely needed.
+- Token rotation is enabled by default — each refresh issues a new refresh token and invalidates the old one.
+- See [Supabase Auth docs](https://supabase.com/docs/reference/javascript/auth-refreshsession) for full reference.

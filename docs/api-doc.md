@@ -19,22 +19,30 @@ Authorization: Bearer <JWT token>
 
 ---
 
-## 1. User Service (Authentication)
+## 1. Authentication
 
-Handles user registration, email/password sign-in, Google OAuth, email verification, password recovery, token refresh, and session management.
+Authentication uses **Supabase Auth** (client-side). The frontend calls Supabase JS SDK directly for signup, signin, Google OAuth, email verification, password reset, and token refresh. The backend validates Supabase-issued JWT tokens and exposes 3 endpoints for profile management and logout.
 
-| Method | Endpoint | Description | JWT Required |
-| --- | --- | --- | --- |
-| POST | `/auth/signin` | Authenticate with email and password; returns a JWT access token and user info | No |
-| POST | `/auth/signup` | Register a new account; sends a 6-digit email verification code | No |
-| POST | `/auth/google` | Authenticate via Google OAuth ID token; auto-creates account if new | No |
-| POST | `/auth/forgot-pw` | Initiate password reset by sending a verification code to the user's email | No |
-| POST | `/auth/verify-email` | Verify email address using a 6-digit code (used in signup and password reset flows) | No |
-| POST | `/auth/resend-code` | Resend verification code to email (30-second cooldown enforced) | No |
-| POST | `/auth/reset-pw` | Reset password after successful email verification | No |
-| POST | `/auth/refresh-token` | Refresh an expired JWT using a valid refresh token | No |
-| POST | `/auth/logout` | Invalidate the current session (accessed from Settings) | Yes |
-| GET | `/auth/me` | Retrieve the currently authenticated user's profile from the JWT | Yes |
+### Backend Endpoints
+
+| Method | Endpoint | Description | JWT Required | Status |
+| --- | --- | --- | --- | --- |
+| GET | `/auth/me` | Retrieve the authenticated user's profile from the database | Yes | ✅ Built |
+| POST | `/auth/profile` | Create or update the user's profile after Supabase auth | Yes | ✅ Built |
+| POST | `/auth/logout` | Revoke the Supabase session server-side | Yes | ✅ Built |
+
+### Supabase Client-Side Flows (handled by frontend)
+
+| Flow | Supabase Method | Description |
+| --- | --- | --- |
+| Sign in | `supabase.auth.signInWithPassword()` | Email/password authentication |
+| Sign up | `supabase.auth.signUp()` | Register new account with email verification |
+| Google OAuth | `supabase.auth.signInWithOAuth()` | Google social login |
+| Forgot password | `supabase.auth.resetPasswordForEmail()` | Send password reset email |
+| Verify email | Automatic via Supabase email link/OTP | Email confirmation |
+| Resend code | `supabase.auth.resend()` | Resend verification email |
+| Reset password | `supabase.auth.updateUser()` | Set new password after reset |
+| Refresh token | Automatic via Supabase session management | Token rotation handled by SDK |
 
 ---
 

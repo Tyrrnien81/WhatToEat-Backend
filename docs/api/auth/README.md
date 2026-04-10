@@ -1,71 +1,58 @@
-# Authentication Service
+# 1. Authentication
 
-Handles user registration, email/password sign-in, Google OAuth, email verification, password recovery, token refresh, and session management.
+Authentication uses **Supabase Auth** on the client side. The frontend calls the Supabase JS SDK directly for signup, signin, Google OAuth, email verification, password reset, and token refresh. The backend validates Supabase-issued JWT tokens via JWKS and exposes 3 endpoints for profile management and session revocation.
 
-## Authentication Header
+## Backend Endpoints
 
-All endpoints marked **JWT Required = Yes** must include:
+| Method | Endpoint | Docs | Description | JWT Required | Status |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/auth/me` | [me.md](me.md) | Retrieve the authenticated user's profile | Yes | ✅ Built |
+| POST | `/auth/profile` | [profile-upsert.md](profile-upsert.md) | Create or update profile after Supabase auth | Yes | ✅ Built |
+| POST | `/auth/logout` | [logout.md](logout.md) | Revoke Supabase session server-side | Yes | ✅ Built |
 
-```http
-Authorization: Bearer <JWT token>
-```
+## Supabase Client-Side Flows
 
-## Endpoints
+The following auth flows are handled entirely by the frontend using `@supabase/supabase-js`. The backend is **not involved** in these operations — Supabase manages user credentials, email verification, and token lifecycle directly.
 
-| Method | Endpoint | File | Description | JWT Required |
-| --- | --- | --- | --- | --- |
-| POST | `/auth/signin` | [signin.md](signin.md) | Authenticate with email and password | No |
-| POST | `/auth/signup` | [signup.md](signup.md) | Register a new user account | No |
-| POST | `/auth/google` | [google.md](google.md) | Authenticate via Google OAuth | No |
-| POST | `/auth/forgot-pw` | [forgot-pw.md](forgot-pw.md) | Send password reset verification code | No |
-| POST | `/auth/verify-email` | [verify-email.md](verify-email.md) | Verify email with 6-digit code | No |
-| POST | `/auth/resend-code` | [resend-code.md](resend-code.md) | Resend verification code | No |
-| POST | `/auth/reset-pw` | [reset-pw.md](reset-pw.md) | Reset password after verification | No |
-| POST | `/auth/refresh-token` | [refresh-token.md](refresh-token.md) | Refresh an expired JWT | No |
-| POST | `/auth/logout` | [logout.md](logout.md) | Invalidate current session | Yes |
-| GET | `/auth/me` | [me.md](me.md) | Get current user info | Yes |
-
-## Implementation Notes
-
-- JWT access token expires after 24 hours; refresh tokens are issued on sign-in and Google auth, with token rotation on refresh
-- Password requirements: minimum 8 characters, must include uppercase, lowercase, digit, and special character
-- Email verification uses a 6-digit code that expires after ~6 minutes
-- Google OAuth validates the ID token server-side and auto-creates the user if not registered
-- Password hashing uses bcrypt
-- Logout revokes all refresh tokens for the user server-side
-
----
+| Flow | Supabase Method | Frontend Screen |
+| --- | --- | --- |
+| Sign in | `signInWithPassword()` | LoginScreen |
+| Sign up | `signUp()` | SignupScreen |
+| Google OAuth | `signInWithOAuth()` | LoginScreen (social button) |
+| Forgot password | `resetPasswordForEmail()` | ForgotPasswordScreen |
+| Verify email | Automatic (email link or OTP) | VerifyEmailScreen |
+| Resend code | `resend()` | VerifyEmailScreen |
+| Reset password | `updateUser()` | ResetPasswordScreen |
+| Refresh token | Automatic (SDK session management) | — |
 
 ## Project Structure (Auth)
 
-The following files handle auth implementation:
-
 ```
 app/
-├── main.py                  # FastAPI app entry point
-├── config.py                # Settings (env vars, DB, JWT secrets)
-├── dependencies.py          # Shared FastAPI dependencies (auth, db session)
 ├── routers/
 │   └── auth.py              # /auth/* endpoint definitions
 ├── schemas/
-│   └── auth.py              # Pydantic request/response schemas
+│   └── auth.py              # Pydantic request/response models
 ├── services/
-│   └── auth_service.py      # Auth business logic
+│   └── auth_service.py      # Business logic: profile CRUD, logout
 ├── models/
-│   └── user.py              # User, VerificationCode, RefreshToken models
-└── utils/
-    ├── jwt.py               # JWT encode/decode helpers
-    ├── email.py             # SMTP verification email sender
-    └── google_oauth.py      # Google OAuth token validation
+│   └── user.py              # Profile model (profiles table)
+├── dependencies.py          # JWT validation via Supabase JWKS
+└── config.py                # Supabase URL, issuer, service role key
 ```
 
 | File | Responsibility |
 | --- | --- |
-| `app/routers/auth.py` | Defines all `/auth/*` FastAPI route handlers |
-| `app/schemas/auth.py` | Pydantic models for request bodies and response shapes (e.g., `SignInRequest`, `SignUpRequest`, `AuthResponse`) |
-| `app/services/auth_service.py` | Core logic: password hashing (bcrypt), verification code generation/validation, user creation, Google token verification |
-| `app/models/user.py` | ORM models for `users`, `verification_codes`, `refresh_tokens` tables |
-| `app/utils/jwt.py` | JWT token creation (access + refresh) and decoding/validation |
-| `app/utils/google_oauth.py` | Validates Google OAuth ID tokens and extracts user info |
-| `app/dependencies.py` | `get_current_user` dependency that extracts and validates JWT from `Authorization` header |
-| `app/config.py` | Environment-based settings: `SECRET_KEY`, `JWT_EXPIRY`, `DATABASE_URL`, `GOOGLE_CLIENT_ID`, etc. |
+| `app/routers/auth.py` | Defines `/auth/me`, `/auth/profile`, `/auth/logout` route handlers |
+| `app/schemas/auth.py` | `UserResponse`, `UpsertProfileRequest`, `MessageResponse` |
+| `app/services/auth_service.py` | Profile lookup/upsert, Supabase session revocation |
+| `app/dependencies.py` | Validates Supabase JWT via async JWKS fetch with 1-hour TTL cache |
+| `app/config.py` | `SUPABASE_URL`, `SUPABASE_ISSUER`, `SUPABASE_SERVICE_ROLE_KEY` |
+
+## Implementation Notes
+
+- JWT tokens are issued by Supabase Auth and validated by the backend using Supabase's JWKS endpoint.
+- JWKS keys are cached for 1 hour to avoid hitting Supabase on every request while still handling key rotation.
+- `POST /auth/profile` is called by the frontend after successful Supabase auth to sync the user's profile into the backend `profiles` table.
+- `POST /auth/logout` calls the Supabase Auth Admin API to revoke all sessions for the user.
+- The `profiles` table uses the Supabase `auth.users.id` (UUID) as its primary key, establishing a 1:1 relationship.

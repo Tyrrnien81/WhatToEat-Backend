@@ -1,14 +1,16 @@
 # POST /auth/logout
 
-Log out the current user and invalidate their session. Accessed from the Settings screen in the app, not from the home screen.
+Revoke the current user's Supabase session server-side. This invalidates all active sessions for the user, preventing further use of existing tokens. Accessed from the Settings screen.
+
+> **Status:** ✅ Implemented — `app/routers/auth.py` → `app/services/auth_service.py`
 
 ## Request
 
 ### Headers
 
-```http
-Authorization: Bearer <JWT token>
-```
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Body
 
@@ -29,9 +31,10 @@ None.
 | Status | Description |
 | --- | --- |
 | `401 Unauthorized` | Invalid, expired, or missing JWT token |
+| `502 Bad Gateway` | Failed to revoke session via Supabase Admin API |
 
 ## Notes
 
-- Logout revokes all refresh tokens for the user server-side, preventing further token refreshes.
-- The client should also clear the stored JWT and refresh token from secure storage and redirect to the sign-in screen.
-- This endpoint is accessed from **Settings**, not from the main home screen.
+- The backend calls the Supabase Auth Admin API (`POST /auth/v1/logout` with `scope: global`) to revoke all sessions for the user.
+- The client should also clear any locally stored tokens and redirect to the sign-in screen after a successful response.
+- Requires `SUPABASE_SERVICE_ROLE_KEY` to be configured in the backend environment.

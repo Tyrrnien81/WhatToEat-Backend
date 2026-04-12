@@ -24,3 +24,6 @@ tmp-sb-test/
 
 # OS files
 .DS_Store
+
+# Microsoft Office lock files (e.g. Excel while workbook is open)
+~$*

@@ -1,3 +1,5 @@
+import logging
+import socket
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,11 +9,43 @@ from app.config import settings
 from app.database import engine, Base
 from app.routers import auth, community, homescreen, dining_hall, profile, questionnaire, scan
 
+logger = logging.getLogger(__name__)
+
+
+def _walk_exception_chain(exc: BaseException) -> list[BaseException]:
+    out: list[BaseException] = []
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        out.append(current)
+        current = current.__cause__
+    return out
+
+
+def _log_database_startup_hint(exc: BaseException) -> None:
+    chain = _walk_exception_chain(exc)
+    if any(isinstance(e, socket.gaierror) for e in chain):
+        logger.error(
+            "Database host could not be resolved (DNS). Fix the hostname in DATABASE_URL "
+            "inside .env (Supabase: Project Settings → Database → connection string)."
+        )
+        return
+    if any(isinstance(e, ConnectionRefusedError) for e in chain):
+        logger.error(
+            "Database connection refused. If using localhost, start PostgreSQL or Docker; "
+            "otherwise check host/port and firewall."
+        )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        _log_database_startup_hint(exc)
+        raise
     yield
 
 

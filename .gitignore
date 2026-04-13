@@ -6,8 +6,13 @@ data/**/*.json
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Virtual environment
+.venv/
 venv/
 
 # Environment variables
@@ -18,3 +23,6 @@ tmp-sb-test/
 
 # OS files
 .DS_Store
+
+# Office temp files
+~$*

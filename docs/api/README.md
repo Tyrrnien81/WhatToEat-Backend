@@ -23,7 +23,7 @@ Authorization: Bearer <JWT token>
 
 | # | Service | Docs | Description |
 |---|---------|------|-------------|
-| 1 | Auth | [auth/](auth/README.md) | Sign-in, sign-up, Google OAuth, password recovery, email verification, session management |
+| 1 | Auth | [auth/](auth/README.md) | Supabase client handles signup/signin/OAuth/reset; backend validates JWTs and exposes `/auth/me`, `/auth/profile`, `/auth/logout` |
 | 2 | Questionnaire | [questionnaire/](questionnaire/README.md) | User preference collection and management |
 | 3 | Homescreen | [homescreen/](homescreen/README.md) | Meal recommendations, nutrition goals, menu favoriting |
 | 4 | Dining Halls | [dining-halls/](dining-halls/README.md) | Dining hall and menu browsing |

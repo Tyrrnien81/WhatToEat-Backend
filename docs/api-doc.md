@@ -11,66 +11,42 @@ Complete API reference for the WhatToEat backend. All endpoints are grouped by s
 
 ## Authentication Header
 
-Endpoints that require user-specific data must include a valid Supabase JWT in the request header:
+Endpoints that require user-specific data must include a valid JWT token in the request header:
 
 ```http
 Authorization: Bearer <JWT token>
 ```
 
-The backend verifies the token with Supabase JWKS; the caller’s user id is taken from the `sub` claim.
-
-**Local testing only:** if `ALLOW_QUERY_USER_ID=true` is set on the server (off by default), some personalized routes accept `?user_id=<uuid>` when the header is missing. Do not enable in production.
-
-### Common response status codes
-
-| Code | When |
-| --- | --- |
-| `200 OK` | Successful read, update, or delete returning a body |
-| `201 Created` | Resource created (`POST` questionnaire, meal log, favorites, community replies, etc.) |
-| `400 Bad Request` | Invalid input |
-| `401 Unauthorized` | Missing/invalid JWT on a protected route |
-| `404 Not Found` | Resource does not exist |
-| `413 Payload Too Large` | Request body exceeds limit (e.g. scan image) |
-| `422 Unprocessable Entity` | Validation error (Pydantic / business rules) |
-
 ---
 
-## 1. Authentication
+## 1. User Service (Authentication)
 
-Authentication uses **Supabase Auth** (client-side). The frontend calls Supabase JS SDK directly for signup, signin, Google OAuth, email verification, password reset, and token refresh. The backend validates Supabase-issued JWT tokens and exposes 3 endpoints for profile management and logout.
+Handles user registration, email/password sign-in, Google OAuth, email verification, password recovery, token refresh, and session management.
 
-### Backend Endpoints
-
-| Method | Endpoint | Description | JWT Required | Status |
-| --- | --- | --- | --- | --- |
-| GET | `/auth/me` | Retrieve the authenticated user's profile from the database | Yes | ✅ Built |
-| POST | `/auth/profile` | Create or update the user's profile after Supabase auth | Yes | ✅ Built |
-| POST | `/auth/logout` | Revoke the Supabase session server-side | Yes | ✅ Built |
-
-### Supabase Client-Side Flows (handled by frontend)
-
-| Flow | Supabase Method | Description |
-| --- | --- | --- |
-| Sign in | `supabase.auth.signInWithPassword()` | Email/password authentication |
-| Sign up | `supabase.auth.signUp()` | Register new account with email verification |
-| Google OAuth | `supabase.auth.signInWithOAuth()` | Google social login |
-| Forgot password | `supabase.auth.resetPasswordForEmail()` | Send password reset email |
-| Verify email | Automatic via Supabase email link/OTP | Email confirmation |
-| Resend code | `supabase.auth.resend()` | Resend verification email |
-| Reset password | `supabase.auth.updateUser()` | Set new password after reset |
-| Refresh token | Automatic via Supabase session management | Token rotation handled by SDK |
+| Method | Endpoint | Description | JWT Required |
+| --- | --- | --- | --- |
+| POST | `/auth/signin` | Authenticate with email and password; returns a JWT access token and user info | No |
+| POST | `/auth/signup` | Register a new account; sends a 6-digit email verification code | No |
+| POST | `/auth/google` | Authenticate via Google OAuth ID token; auto-creates account if new | No |
+| POST | `/auth/forgot-pw` | Initiate password reset by sending a verification code to the user's email | No |
+| POST | `/auth/verify-email` | Verify email address using a 6-digit code (used in signup and password reset flows) | No |
+| POST | `/auth/resend-code` | Resend verification code to email (30-second cooldown enforced) | No |
+| POST | `/auth/reset-pw` | Reset password after successful email verification | No |
+| POST | `/auth/refresh-token` | Refresh an expired JWT using a valid refresh token | No |
+| POST | `/auth/logout` | Invalidate the current session (accessed from Settings) | Yes |
+| GET | `/auth/me` | Retrieve the currently authenticated user's profile from the JWT | Yes |
 
 ---
 
 ## 2. Questionnaire
 
-Collects and manages user preference data used for personalized meal recommendations. Submitted during onboarding and editable from the profile. Supports unit conversion (ft/lb → cm/kg) and auto-calculates nutrition targets.
+Collects and manages user preference data used for personalized meal recommendations. Submitted during onboarding and editable from the profile.
 
-| Method | Endpoint | Description | JWT Required | Status |
-| --- | --- | --- | --- | --- |
-| POST | `/questionnaire` | Save initial onboarding preferences (body metrics, diet, dislikes, allergens, favorite dining halls) with unit conversion | Yes | ✅ Built |
-| GET | `/users/me/preferences` | Retrieve the current user's saved dietary preferences and computed nutrition targets | Yes | ✅ Built |
-| PATCH | `/users/me/preferences` | Partially update dietary preferences; auto-recalculates targets when body metrics change | Yes | ✅ Built |
+| Method | Endpoint | Description | JWT Required |
+| --- | --- | --- | --- |
+| POST | `/questionnaire` | Save initial user preferences (birthday, gender, height, weight, goal weight, diet type, dislikes, allergens) | Yes |
+| GET | `/users/me/preferences` | Retrieve the current user's saved dietary preferences | Yes |
+| PATCH | `/users/me/preferences` | Update the user's dietary preferences | Yes |
 
 ---
 
@@ -92,15 +68,15 @@ Powers the main screen with personalized menu recommendations, daily nutrition t
 
 ## 4. Dining Hall
 
-Provides read-only access to dining hall information, station listings, and daily menus. Most routes are public; `/dining-halls/full` accepts an optional JWT to personalize `favorited` flags.
+Provides read-only access to dining hall information, station listings, and daily menus. No authentication required.
 
-| Method | Endpoint | Description | JWT Required | Status |
-| --- | --- | --- | --- | --- |
-| GET | `/dining-halls` | List all available dining halls | No | ✅ Built |
-| GET | `/dining-halls/{hall_id}` | Get details for a specific dining hall | No | ✅ Built |
-| GET | `/dining-halls/{hall_id}/stations` | List all food stations within a specific dining hall | No | ✅ Built |
-| GET | `/dining-halls/{hall_id}/menus` | Get the menu items available at each station | No | ✅ Built |
-| GET | `/dining-halls/full` | Get frontend-oriented nested hall/day/menu payload | Optional | ✅ Built |
+| Method | Endpoint | Description | JWT Required |
+| --- | --- | --- | --- |
+| GET | `/dining-halls` | List all available dining halls | No |
+| GET | `/dining-halls/{hall_id}` | Get details for a specific dining hall | No |
+| GET | `/dining-halls/{hall_id}/stations` | List all food stations within a specific dining hall | No |
+| GET | `/dining-halls/{hall_id}/menus` | Get the menu items available at each station | No |
+| GET | `/dining-halls/full` | Get frontend-oriented nested hall/day/menu payload | No |
 
 ---
 
@@ -108,10 +84,10 @@ Provides read-only access to dining hall information, station listings, and dail
 
 Enables food recognition via photo upload. Identifies the food item and returns nutritional data, which can then be logged to the user's meal history.
 
-| Method | Endpoint | Description | JWT Required | Status |
-| --- | --- | --- | --- | --- |
-| POST | `/scan` | Upload a food photo for recognition; returns identified food name, calories, and nutritional breakdown | Yes | ✅ Built |
-| POST | `/scan/log` | Save the recognized food and its nutritional data to the user's meal log | Yes | ✅ Built |
+| Method | Endpoint | Description | JWT Required |
+| --- | --- | --- | --- |
+| POST | `/scan` | Upload a food photo for recognition; returns identified food name, calories, and nutritional breakdown | Yes |
+| POST | `/scan/log` | Save the recognized food and its nutritional data to the user's meal log | Yes |
 
 ---
 
@@ -119,33 +95,28 @@ Enables food recognition via photo upload. Identifies the food item and returns 
 
 A social feed where users can share and browse dining hall food photos and posts.
 
-| Method | Endpoint | Description | JWT Required | Status |
-| --- | --- | --- | --- | --- |
-| GET | `/community/posts` | Retrieve a feed of community posts (food photos, reviews) related to dining halls | Optional | ✅ Built |
-| POST | `/community/posts` | Create a new community post with a photo and text | Yes | ✅ Built |
-| GET | `/community/posts/{post_id}` | Retrieve a single community post by ID | Optional | ✅ Built |
-| DELETE | `/community/posts/{post_id}` | Delete a post authored by the current user | Yes | ✅ Built |
-| POST | `/community/posts/{post_id}/likes` | Like a post | Yes | ✅ Built |
-| DELETE | `/community/posts/{post_id}/likes` | Unlike a post | Yes | ✅ Built |
-| POST | `/community/posts/{post_id}/replies` | Create a top-level reply to a post | Yes | ✅ Built |
-| POST | `/community/replies/{reply_id}/replies` | Create a nested reply to a reply | Yes | ✅ Built |
-| POST | `/community/replies/{reply_id}/likes` | Like a reply | Yes | ✅ Built |
-| DELETE | `/community/replies/{reply_id}/likes` | Unlike a reply | Yes | ✅ Built |
+| Method | Endpoint | Description | JWT Required |
+| --- | --- | --- | --- |
+| GET | `/community/posts` | Retrieve a feed of community posts (food photos, reviews) related to dining halls | No |
+| POST | `/community/posts` | Create a new community post with a photo and text | Yes |
+| GET | `/community/posts/{post_id}` | Retrieve a single community post by ID | No |
+| DELETE | `/community/posts/{post_id}` | Delete a post authored by the current user | Yes |
+| POST | `/community/posts/{post_id}/likes` | Like a post | Yes |
+| DELETE | `/community/posts/{post_id}/likes` | Unlike a post | Yes |
+| POST | `/community/posts/{post_id}/replies` | Create a top-level reply to a post | Yes |
+| POST | `/community/replies/{reply_id}/replies` | Create a nested reply to a reply | Yes |
+| POST | `/community/replies/{reply_id}/likes` | Like a reply | Yes |
+| DELETE | `/community/replies/{reply_id}/likes` | Unlike a reply | Yes |
 
 ---
 
 ## 7. Profile
 
-Manages the authenticated user's profile information, account settings, and food consumption log.
+Manages the authenticated user's profile information and meal history log.
 
-| Method | Endpoint | Description | JWT Required | Status |
-| --- | --- | --- | --- | --- |
-| GET | `/users/me` | Retrieve the current user's full profile (including body metrics and preferences) | Yes | ✅ Built |
-| PATCH | `/users/me` | Update profile information (name, body metrics, diet type) | Yes | ✅ Built |
-| DELETE | `/users/me` | Permanently delete the user's account and all associated data | Yes | ✅ Built |
-| POST | `/users/me/avatar` | Upload or update profile photo | Yes | ✅ Built |
-| POST | `/users/me/change-password` | Change the user's password (email-based accounts only) | Yes | ✅ Built |
-| GET | `/users/me/food-log` | Retrieve food consumption history with pagination and date filtering | Yes | ✅ Built |
-| POST | `/users/me/food-log` | Manually add a food log entry | Yes | ✅ Built |
-| DELETE | `/users/me/food-log/{entry_id}` | Delete a specific food log entry | Yes | ✅ Built |
-| GET | `/users/me/food-log/summary` | Retrieve nutrition summary, streaks, and weight history | Yes | ✅ Built |
+| Method | Endpoint | Description | JWT Required |
+| --- | --- | --- | --- |
+| GET | `/users/me` | Retrieve the current user's full profile | Yes |
+| GET | `/users/me/food-log` | Retrieve the user's historical meal log (all previously recorded meals) | Yes |
+| POST | `/users/me/food-log` | Manually add a past meal entry to the user's meal log | Yes |
+| PATCH | `/users/me` | Update the user's profile information (name, preferences, etc.) | Yes |

@@ -6,13 +6,14 @@ Retrieve a frontend-oriented nested dining hall payload for a specific date.
 
 ### Headers
 
-Optional. Send `Authorization: Bearer <JWT>` to set `favorited` on items using that user’s saved favorites (`sub`). Without auth, `favorited` is always `false`.
+None required.
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | `date` | string | No | Target date (`YYYY-MM-DD`). Defaults to today. |
+| `user_id` | string (UUID) | No | If provided, marks `favorited` items from user favorites |
 
 ### Body
 
@@ -71,10 +72,10 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `401 Unauthorized` | Invalid or expired JWT (only if `Authorization` was sent) |
+| `422 Unprocessable Entity` | Invalid `user_id` format (must be UUID) |
 
 ## Notes
 
 - The response is shaped for current frontend hall-card rendering (hall metadata + date-keyed day data).
-- `favorited` uses `favorites.food_id` for the authenticated user when a JWT is sent. Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` when the header is omitted.
+- `favorited` is based on `favorites.food_id` entries for the provided `user_id`.
 - When no data exists for the date, halls return `status: "closed"` and empty menu categories.

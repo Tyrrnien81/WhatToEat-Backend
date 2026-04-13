@@ -16,14 +16,8 @@ venv/
 .env.*
 !.env.example
 
-# Uploaded files (avatars, etc.)
-uploads/
-
 # Local npm scratch (supabase-js smoke tests)
 tmp-sb-test/
 
 # OS files
 .DS_Store
-
-# Microsoft Office lock files (e.g. Excel while workbook is open)
-~$*

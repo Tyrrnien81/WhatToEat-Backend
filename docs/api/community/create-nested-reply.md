@@ -8,6 +8,7 @@ Create a nested reply under an existing reply.
 
 | Header | Value | Required |
 | --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 | `Content-Type` | `application/json` | Yes |
 
 ### Path Parameters
@@ -18,9 +19,7 @@ Create a nested reply under an existing reply.
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User creating the nested reply |
+None.
 
 ### Body
 
@@ -49,5 +48,10 @@ Create a nested reply under an existing reply.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Missing or invalid JWT |
 | `404 Not Found` | User not found, parent reply not found, or parent post not found |
 | `422 Unprocessable Entity` | Validation error or blank content |
+
+## Notes
+
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

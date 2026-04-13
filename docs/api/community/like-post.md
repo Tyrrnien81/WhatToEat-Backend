@@ -6,7 +6,9 @@ Like a community post. This operation is idempotent — liking an already-liked 
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Path Parameters
 
@@ -16,9 +18,7 @@ None required.
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID performing the like |
+None.
 
 ### Body
 
@@ -46,8 +46,10 @@ None.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Missing or invalid JWT |
 | `404 Not Found` | User not found or post not found |
 
 ## Notes
 
 - If already liked, response is still `200` with `message: "Post already liked"`.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

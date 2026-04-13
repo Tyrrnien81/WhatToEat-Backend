@@ -6,7 +6,7 @@ Retrieve a single community post by its unique ID, including threaded replies.
 
 ### Headers
 
-None required (public endpoint).
+Public endpoint. Optionally send `Authorization: Bearer <JWT>` so the post and replies include correct `likedByMe` for the authenticated user.
 
 ### Path Parameters
 
@@ -16,9 +16,7 @@ None required (public endpoint).
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | No | Current user ID (enables `likedByMe`) |
+None.
 
 ### Body
 
@@ -98,4 +96,5 @@ None.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Invalid or expired JWT (only if `Authorization` was sent) |
 | `404 Not Found` | Post not found |

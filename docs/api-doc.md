@@ -2,6 +2,8 @@
 
 Complete API reference for the WhatToEat backend. All endpoints are grouped by service.
 
+For the same content organized with links to per-endpoint pages, see [`docs/api/README.md`](api/README.md). Authentication architecture and Supabase split: [`docs/api/auth/README.md`](api/auth/README.md). Profile details: [`docs/api/profile/README.md`](api/profile/README.md).
+
 ## HTTP Method Guide
 
 - `GET` = Retrieve data from the server
@@ -9,32 +11,44 @@ Complete API reference for the WhatToEat backend. All endpoints are grouped by s
 - `PATCH` = Partially update an existing resource
 - `DELETE` = Remove a resource
 
-## Authentication Header
+## Authentication
 
-Endpoints that require user-specific data must include a valid JWT token in the request header:
+Protected routes require a **Supabase access token** in the header. The backend validates it against Supabase JWKS (`issuer` from `SUPABASE_ISSUER`). Identity is always the JWT `sub` claim (matches `users.id`).
 
 ```http
 Authorization: Bearer <JWT token>
 ```
 
+**Local integration tests only:** when the server sets `ALLOW_QUERY_USER_ID=true` (never in production), some personalized routes also accept `?user_id=<uuid>` if the header is absent. Production and staging clients must send the header only.
+
 ---
 
-## 1. User Service (Authentication)
+## 1. Authentication
 
-Handles user registration, email/password sign-in, Google OAuth, email verification, password recovery, token refresh, and session management.
+Sign-in, sign-up, Google OAuth, email verification, password reset, and token refresh are handled by **Supabase Auth** on the client (`@supabase/supabase-js`). This FastAPI backend validates Supabase-issued JWTs and exposes three routes for profile sync and server-side logout.
+
+### Backend endpoints
 
 | Method | Endpoint | Description | JWT Required |
 | --- | --- | --- | --- |
-| POST | `/auth/signin` | Authenticate with email and password; returns a JWT access token and user info | No |
-| POST | `/auth/signup` | Register a new account; sends a 6-digit email verification code | No |
-| POST | `/auth/google` | Authenticate via Google OAuth ID token; auto-creates account if new | No |
-| POST | `/auth/forgot-pw` | Initiate password reset by sending a verification code to the user's email | No |
-| POST | `/auth/verify-email` | Verify email address using a 6-digit code (used in signup and password reset flows) | No |
-| POST | `/auth/resend-code` | Resend verification code to email (30-second cooldown enforced) | No |
-| POST | `/auth/reset-pw` | Reset password after successful email verification | No |
-| POST | `/auth/refresh-token` | Refresh an expired JWT using a valid refresh token | No |
-| POST | `/auth/logout` | Invalidate the current session (accessed from Settings) | Yes |
-| GET | `/auth/me` | Retrieve the currently authenticated user's profile from the JWT | Yes |
+| GET | `/auth/me` | Retrieve the authenticated user's profile from the database | Yes |
+| POST | `/auth/profile` | Create or update profile after Supabase auth (sync into `profiles`) | Yes |
+| POST | `/auth/logout` | Revoke the Supabase session server-side | Yes |
+
+### Supabase client-side flows
+
+These flows are **not** implemented on this backend; the frontend calls Supabase directly.
+
+| Flow | Supabase method | Notes |
+| --- | --- | --- |
+| Sign in | `signInWithPassword()` | — |
+| Sign up | `signUp()` | — |
+| Google OAuth | `signInWithOAuth()` | — |
+| Forgot password | `resetPasswordForEmail()` | — |
+| Verify email | Email link or OTP | Per Supabase project settings |
+| Resend code | `resend()` | — |
+| Reset password | `updateUser()` | After recovery flow |
+| Refresh token | SDK session management | Automatic |
 
 ---
 
@@ -60,21 +74,23 @@ Powers the main screen with personalized menu recommendations, daily nutrition t
 | GET | `/goals/daily` | Retrieve today's nutrition goal progress (calories, macros) for the status bar | Yes | ✅ Built |
 | GET | `/menus/summary` | Get today's highlighted menu items per dining hall, filtered by user preferences | Yes | ✅ Built |
 | POST | `/meals/log` | Log a meal with food items and snapshotted nutrition data | Yes | ✅ Built |
-| POST | `/save-menu` | Save a recommended combo to the user's favorites | Yes | Not built |
-| DELETE | `/delete-menu` | Remove a previously saved combo from the user's favorites | Yes | Not built |
+| POST | `/favorites` | Save a recommended combo to the user's favorites | Yes | ✅ Built |
+| DELETE | `/favorites/{favorite_id}` | Remove a previously saved combo from the user's favorites | Yes | ✅ Built |
+| GET | `/recommendations/addons` | Get addon recommendations and quick-add items for the selected meal period | Yes | ✅ Built |
 
 ---
 
 ## 4. Dining Hall
 
-Provides read-only access to dining hall information, station listings, and daily menus. No authentication required.
+Provides read-only access to dining hall information, station listings, and daily menus. Most routes do not require authentication; `/dining-halls/full` accepts an optional JWT to personalize filtering when provided.
 
 | Method | Endpoint | Description | JWT Required |
 | --- | --- | --- | --- |
-| GET | `/dining-hall` | List all available dining halls | No |
-| GET | `/dining-hall/:hallId` | Get details for a specific dining hall | No |
-| GET | `/dining-hall/:hallId/stations` | List all food stations within a specific dining hall | No |
-| GET | `/dining-hall/:hallId/stations/menu` | Get the menu items available at each station | No |
+| GET | `/dining-halls` | List all available dining halls | No |
+| GET | `/dining-halls/{hall_id}` | Get details for a specific dining hall | No |
+| GET | `/dining-halls/{hall_id}/stations` | List all food stations within a specific dining hall | No |
+| GET | `/dining-halls/{hall_id}/menus` | Get the menu items available at each station | No |
+| GET | `/dining-halls/full` | Get frontend-oriented nested hall/day/menu payload | Optional |
 
 ---
 
@@ -97,18 +113,29 @@ A social feed where users can share and browse dining hall food photos and posts
 | --- | --- | --- | --- |
 | GET | `/community/posts` | Retrieve a feed of community posts (food photos, reviews) related to dining halls | No |
 | POST | `/community/posts` | Create a new community post with a photo and text | Yes |
-| GET | `/community/posts/:postId` | Retrieve a single community post by ID | No |
-| DELETE | `/community/posts/:postId` | Delete a post authored by the current user | Yes |
+| GET | `/community/posts/{post_id}` | Retrieve a single community post by ID | No |
+| DELETE | `/community/posts/{post_id}` | Delete a post authored by the current user | Yes |
+| POST | `/community/posts/{post_id}/likes` | Like a post | Yes |
+| DELETE | `/community/posts/{post_id}/likes` | Unlike a post | Yes |
+| POST | `/community/posts/{post_id}/replies` | Create a top-level reply to a post | Yes |
+| POST | `/community/replies/{reply_id}/replies` | Create a nested reply to a reply | Yes |
+| POST | `/community/replies/{reply_id}/likes` | Like a reply | Yes |
+| DELETE | `/community/replies/{reply_id}/likes` | Unlike a reply | Yes |
 
 ---
 
 ## 7. Profile
 
-Manages the authenticated user's profile information and meal history log.
+Manages the authenticated user's profile information, account settings, and food consumption log.
 
 | Method | Endpoint | Description | JWT Required |
 | --- | --- | --- | --- |
 | GET | `/users/me` | Retrieve the current user's full profile | Yes |
-| GET | `/users/me/food-log` | Retrieve the user's historical meal log (all previously recorded meals) | Yes |
-| POST | `/users/me/food-log` | Manually add a past meal entry to the user's meal log | Yes |
-| PATCH | `/users/me` | Update the user's profile information (name, preferences, etc.) | Yes |
+| PATCH | `/users/me` | Update profile information (name, preferences, body metrics, etc.) | Yes |
+| DELETE | `/users/me` | Delete the user's account and associated data | Yes |
+| POST | `/users/me/avatar` | Upload a profile photo | Yes |
+| POST | `/users/me/change-password` | Change password (Supabase Auth; not for OAuth-only users) | Yes |
+| GET | `/users/me/food-log` | Retrieve food consumption history (supports date filter and pagination) | Yes |
+| POST | `/users/me/food-log` | Manually add a food log entry | Yes |
+| DELETE | `/users/me/food-log/{entry_id}` | Delete a food log entry | Yes |
+| GET | `/users/me/food-log/summary` | Retrieve nutrition summary and streaks (`range`: `week` \| `month` \| `all`) | Yes |

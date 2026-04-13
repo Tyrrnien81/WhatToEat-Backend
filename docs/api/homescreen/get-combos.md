@@ -8,13 +8,14 @@ Retrieve personalized meal combo recommendations. Combos are optimized to match 
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID requesting recommendations |
 | `date` | string | No | Target date (`YYYY-MM-DD`). Defaults to today. |
 | `mealType` | string | No | Filter by meal period: `breakfast`, `lunch`, or `dinner` |
 
@@ -89,7 +90,8 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `422 Unprocessable Entity` | Missing or invalid `user_id` query parameter |
+| `401 Unauthorized` | Missing or invalid JWT |
+| `422 Unprocessable Entity` | Invalid query parameters |
 
 ## Notes
 
@@ -97,3 +99,4 @@ None.
 - Combos only include foods that pass the user's allergen and dislike filters.
 - Results are scoped to menus available at UW-Madison dining halls for the given date.
 - The `mealType` filter is context-aware — if omitted, the server may infer the current meal period based on the time of day.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

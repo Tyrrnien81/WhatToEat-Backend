@@ -8,6 +8,7 @@ Create a top-level reply on a post.
 
 | Header | Value | Required |
 | --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 | `Content-Type` | `application/json` | Yes |
 
 ### Path Parameters
@@ -18,9 +19,7 @@ Create a top-level reply on a post.
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User creating the reply |
+None.
 
 ### Body
 
@@ -49,5 +48,10 @@ Create a top-level reply on a post.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Missing or invalid JWT |
 | `404 Not Found` | User not found or post not found |
 | `422 Unprocessable Entity` | Validation error or blank content |
+
+## Notes
+
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

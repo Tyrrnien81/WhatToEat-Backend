@@ -14,9 +14,12 @@ htmlcov/
 # Virtual environment
 .venv/
 venv/
+.venv/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 
 # Local npm scratch (supabase-js smoke tests)
 tmp-sb-test/

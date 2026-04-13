@@ -8,13 +8,14 @@ Retrieve today's highlighted menu items from each dining hall, filtered and rank
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID |
 | `date` | string | No | Target date (`YYYY-MM-DD`). Defaults to today. |
 | `mealType` | string | No | Filter by meal period: `breakfast`, `lunch`, or `dinner` |
 
@@ -72,7 +73,8 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `422 Unprocessable Entity` | Missing or invalid `user_id` query parameter |
+| `401 Unauthorized` | Missing or invalid JWT |
+| `422 Unprocessable Entity` | Invalid query parameters |
 
 ## Notes
 
@@ -81,3 +83,4 @@ None.
 - Dining hall status is derived from `operating_hours` in the `restaurants` table.
 - Results may be grouped by meal period depending on the time of day.
 - Data is sourced from the daily Nutrislice ingestion pipeline and cached in Redis.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

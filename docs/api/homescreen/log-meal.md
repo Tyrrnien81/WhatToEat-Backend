@@ -8,13 +8,14 @@ Log a meal with one or more food items. Creates or finds an existing meal log en
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
+| `Content-Type` | `application/json` | Yes |
 
 ### Query Parameters
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID logging the meal |
+None.
 
 ### Body
 
@@ -77,6 +78,7 @@ None required.
 
 | Status | Description |
 | --- | --- |
+| `401 Unauthorized` | Missing or invalid JWT |
 | `422 Unprocessable Entity` | Invalid request body (missing required fields, bad date format) |
 
 ## Notes
@@ -85,3 +87,4 @@ None required.
 - Nutrition values are snapshotted at log time so historical logs stay accurate even if food data changes later.
 - If `foodId` is provided but nutrition fields (`calories`, `protein`, etc.) are omitted, the service looks up values from the `food_nutrition` table automatically.
 - The `source` field tracks how the item was logged — `menu` (from dining hall menu), `scan` (from photo recognition), or `manual` (user-entered).
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

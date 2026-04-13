@@ -2,6 +2,8 @@
 
 Manually add a food entry to the user's food log. Used for items not logged via scan or dining hall menu selection.
 
+> **Status:** ✅ Implemented — `app/routers/profile.py` → `app/services/profile_service.py`
+
 ## Request
 
 ### Headers
@@ -39,19 +41,24 @@ Manually add a food entry to the user's food log. Used for items not logged via 
 
 ```json
 {
-  "id": "entry-uuid",
+  "id": "42",
   "message": "Food log entry added successfully"
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `id` | string | Unique identifier for the new entry |
+| `id` | string | The new entry's unique identifier (stringified integer) |
 | `message` | string | Confirmation message |
 
 ### Errors
 
 | Status | Description |
 | --- | --- |
-| `400 Bad Request` | Missing or invalid fields |
+| `400 Bad Request` | Missing required fields or invalid date format |
 | `401 Unauthorized` | Missing or invalid JWT token |
+
+## Notes
+
+- If a `meal_log` already exists for the given date, the new entry is added to it. Otherwise a new meal log is created with `meal_type` set to `"Manual"`.
+- The entry `source` is always set to `"manual"`.

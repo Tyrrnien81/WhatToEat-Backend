@@ -41,7 +41,13 @@ Upload a food photo for AI-based recognition. The server processes the image and
       "carbs": 11,
       "fat": 1
     }
-  ]
+  ],
+  "summary": {
+    "kcal": 405,
+    "protein": 34,
+    "carbs": 16,
+    "fat": 13
+  }
 }
 ```
 
@@ -55,6 +61,11 @@ Upload a food photo for AI-based recognition. The server processes the image and
 | `items[].protein` | number | Protein in grams |
 | `items[].carbs` | number | Carbohydrates in grams |
 | `items[].fat` | number | Total fat in grams |
+| `summary` | object | Aggregate nutrition totals for quick display |
+| `summary.kcal` | number | Total calories across identified items |
+| `summary.protein` | number | Total protein in grams across identified items |
+| `summary.carbs` | number | Total carbohydrates in grams across identified items |
+| `summary.fat` | number | Total fat in grams across identified items |
 
 ### Errors
 
@@ -62,6 +73,7 @@ Upload a food photo for AI-based recognition. The server processes the image and
 | --- | --- |
 | `400 Bad Request` | No image provided or unsupported file format |
 | `401 Unauthorized` | Missing or invalid JWT token |
+| `413 Payload Too Large` | Image exceeds size limit (10 MB) |
 | `422 Unprocessable Entity` | Could not identify any food in the image |
 
 ## Notes
@@ -69,3 +81,4 @@ Upload a food photo for AI-based recognition. The server processes the image and
 - Multiple food items may be identified from a single photo.
 - The `scanId` is used when subsequently calling `POST /scan/log` to persist the results.
 - Confidence scores below a threshold may indicate uncertain recognition — the client should allow the user to review and correct results before logging.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

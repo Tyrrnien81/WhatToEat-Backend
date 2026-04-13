@@ -6,13 +6,14 @@ Retrieve add-on recommendations for the target meal period.
 
 ### Headers
 
-None required.
+| Header | Value | Required |
+| --- | --- | --- |
+| `Authorization` | `Bearer <JWT token>` | Yes |
 
 ### Query Parameters
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `user_id` | string (UUID) | Yes | User ID requesting recommendations |
 | `date` | string | No | Target date (`YYYY-MM-DD`). Defaults to today. |
 | `mealType` | string | No | Filter by meal period: `breakfast`, `lunch`, or `dinner` |
 
@@ -66,9 +67,11 @@ None.
 
 | Status | Description |
 | --- | --- |
-| `422 Unprocessable Entity` | Missing or invalid `user_id` query parameter |
+| `401 Unauthorized` | Missing or invalid JWT |
+| `422 Unprocessable Entity` | Invalid query parameters |
 
 ## Notes
 
 - Results are filtered by user allergens and dislikes.
 - If `mealType` is omitted, backend infers meal period from current time.
+- Local dev only: `ALLOW_QUERY_USER_ID=true` allows `?user_id=` without JWT (never in production).

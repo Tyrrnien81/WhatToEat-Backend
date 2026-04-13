@@ -1,4 +1,4 @@
-from app.models.user import User  # noqa: F401
+from app.models.user import User, Profile  # noqa: F401
 from app.models.menu import (  # noqa: F401
     Restaurant, MealType, Food, FoodNutrition, FoodIcon,
     FoodIconAssignment, MenuSnapshot, MenuSection, MenuSectionItem,

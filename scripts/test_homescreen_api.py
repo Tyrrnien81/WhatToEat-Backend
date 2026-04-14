@@ -67,24 +67,31 @@ ensure_project_python()
 import requests
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.pool import NullPool
 
 
 def resolve_database_url() -> str:
     from_env = os.getenv("DATABASE_URL")
-    if from_env:
-        return from_env
-
-    env_file = PROJECT_ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            if key.strip() == "DATABASE_URL":
-                return value.strip().strip('"').strip("'")
-
-    return "postgresql+asyncpg://postgres:password@localhost:5432/whattoeat"
+    direct = os.getenv("DATABASE_URL_DIRECT")
+    raw = from_env or ""
+    if not raw:
+        env_file = PROJECT_ROOT / ".env"
+        if env_file.exists():
+            for line in env_file.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                if key.strip() == "DATABASE_URL":
+                    raw = value.strip().strip('"').strip("'")
+                    break
+    if not raw:
+        raw = "postgresql+asyncpg://postgres:password@localhost:5432/whattoeat"
+    if direct:
+        return direct.strip().strip('"').strip("'")
+    if "+asyncpg" in raw and ":6543" in raw:
+        return raw.replace(":6543", ":5432", 1)
+    return raw
 
 
 @dataclass
@@ -99,7 +106,15 @@ class HomeScreenApiTester:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.max_response_chars = max_response_chars
-        self.engine: AsyncEngine = create_async_engine(resolve_database_url(), echo=False)
+        self.engine: AsyncEngine = create_async_engine(
+            resolve_database_url(),
+            echo=False,
+            poolclass=NullPool,
+            connect_args={
+                "statement_cache_size": 0,
+                "prepared_statement_cache_size": 0,
+            },
+        )
         self._server_process: subprocess.Popen | None = None
 
     async def close(self) -> None:

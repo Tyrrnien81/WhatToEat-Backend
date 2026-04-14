@@ -7,7 +7,9 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.tracking import UserPreference
+from app.models.user import Profile, User
 from app.schemas.questionnaire import (
     PreferencesResponse,
     PreferencesUpdateRequest,
@@ -78,6 +80,42 @@ def _calculate_targets(
     }
 
 
+async def _ensure_user_and_profile_for_questionnaire(
+    user_id: uuid.UUID, db: AsyncSession
+) -> None:
+    """Create `users` + `profiles` rows when using dev ?user_id= (FK targets `users.id`).
+
+    Without this, POST /questionnaire fails or misbehaves if the UUID was never inserted locally.
+    When ``ALLOW_QUERY_USER_ID`` is off, we do not auto-create (expect Supabase-synced rows).
+    """
+    if not settings.ALLOW_QUERY_USER_ID:
+        return
+
+    existing_user = (
+        await db.execute(select(User).where(User.id == user_id))
+    ).scalar_one_or_none()
+    if existing_user is not None:
+        existing_profile = (
+            await db.execute(select(Profile).where(Profile.id == user_id))
+        ).scalar_one_or_none()
+        if existing_profile is None:
+            db.add(
+                Profile(
+                    id=user_id,
+                    email=existing_user.email,
+                    name=existing_user.name,
+                )
+            )
+            await db.flush()
+        return
+
+    email = f"dev-{user_id}@whattoeat.local"
+    name = "WhatToEat Dev User"
+    db.add(User(id=user_id, email=email, name=name))
+    db.add(Profile(id=user_id, email=email, name=name))
+    await db.flush()
+
+
 # ── POST /questionnaire ─────────────────────────────────────────────────────
 
 async def submit_questionnaire(
@@ -85,6 +123,8 @@ async def submit_questionnaire(
     payload: QuestionnaireSubmitRequest,
     db: AsyncSession,
 ) -> dict:
+    await _ensure_user_and_profile_for_questionnaire(user_id, db)
+
     result = await db.execute(
         select(UserPreference).where(UserPreference.user_id == user_id)
     )

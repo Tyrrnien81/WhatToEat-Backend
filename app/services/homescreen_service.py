@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy import select, func as sqla_func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from app.models.menu import (
     Restaurant, MealType, Food, FoodNutrition, FoodIcon,
@@ -45,8 +46,22 @@ def _compute_combo_label(protein: float, carbs: float, fat: float, calories: flo
 
 
 async def _get_user_prefs(user_id: uuid.UUID, db: AsyncSession) -> UserPreference | None:
+    """Load only columns homescreen uses so older DBs without e.g. favorite_dining_halls still work."""
     result = await db.execute(
-        select(UserPreference).where(UserPreference.user_id == user_id)
+        select(UserPreference)
+        .where(UserPreference.user_id == user_id)
+        .options(
+            load_only(
+                UserPreference.id,
+                UserPreference.user_id,
+                UserPreference.allergens,
+                UserPreference.dislikes,
+                UserPreference.target_calories,
+                UserPreference.target_protein_g,
+                UserPreference.target_carbs_g,
+                UserPreference.target_fat_g,
+            )
+        )
     )
     return result.scalar_one_or_none()
 

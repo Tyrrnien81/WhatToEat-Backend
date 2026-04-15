@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     target_protein_g INT,
     target_carbs_g  INT,
     target_fat_g    INT,
+    favorite_dining_halls JSONB DEFAULT '[]'::jsonb,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );

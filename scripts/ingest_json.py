@@ -165,7 +165,8 @@ def collect_all(data_dir: Path, target=None):
 async def bulk_ingest(restaurants, meal_types, foods, nutrition,
                       icons, icon_assigns, snapshots, sections, items):
     dsn = get_dsn()
-    conn = await asyncpg.connect(dsn)
+    # PgBouncer (Supabase pooler) + transaction pooling breaks prepared statements.
+    conn = await asyncpg.connect(dsn, statement_cache_size=0)
     print("Connected to database.")
     t0 = time.perf_counter()
 
@@ -313,15 +314,45 @@ async def bulk_ingest(restaurants, meal_types, foods, nutrition,
                     sec, fid.get(ext_fid), ext_item_id,
                     fv_id, pos, station, cat, price, sa, su,
                 ))
-            await conn.executemany(
-                """INSERT INTO menu_section_items (
-                       section_id, food_id, external_menu_item_id,
-                       food_variation_id, position, station_name,
-                       category, price, serving_size_amount, serving_size_unit)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
-                item_rows,
-            )
-            print(f"  menu_section_items: {len(item_rows)}")
+
+            with_ext = [r for r in item_rows if r[2] is not None]
+            without_ext = [r for r in item_rows if r[2] is None]
+
+            if with_ext:
+                await conn.executemany(
+                    """INSERT INTO menu_section_items (
+                           section_id, food_id, external_menu_item_id,
+                           food_variation_id, position, station_name,
+                           category, price, serving_size_amount, serving_size_unit)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                       ON CONFLICT (section_id, external_menu_item_id)
+                       WHERE external_menu_item_id IS NOT NULL
+                       DO NOTHING""",
+                    with_ext,
+                )
+            if without_ext:
+                await conn.executemany(
+                    """INSERT INTO menu_section_items (
+                           section_id, food_id, external_menu_item_id,
+                           food_variation_id, position, station_name,
+                           category, price, serving_size_amount, serving_size_unit)
+                       SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+                       WHERE NOT EXISTS (
+                         SELECT 1 FROM menu_section_items e
+                         WHERE e.section_id = $1
+                           AND e.external_menu_item_id IS NULL
+                           AND COALESCE(e.food_id, -1) = COALESCE($2::integer, -1)
+                           AND COALESCE(e.food_variation_id, -1) = COALESCE($4::integer, -1)
+                           AND e.position = $5
+                           AND COALESCE(e.station_name, '') = COALESCE($6::varchar, '')
+                           AND COALESCE(e.category, '') = COALESCE($7::varchar, '')
+                           AND COALESCE(e.serving_size_amount::text, '') = COALESCE($9::varchar, '')
+                           AND COALESCE(e.serving_size_unit::text, '') = COALESCE($10::varchar, '')
+                           AND COALESCE(e.price, -1) = COALESCE($8::numeric, -1)
+                       )""",
+                    without_ext,
+                )
+            print(f"  menu_section_items: {len(item_rows)} ({len(with_ext)} w/ ext id, {len(without_ext)} fallback)")
 
         elapsed = time.perf_counter() - t0
         print(f"\nAll data committed in {elapsed:.1f}s")

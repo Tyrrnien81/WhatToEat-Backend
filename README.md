@@ -138,7 +138,7 @@ uvicorn app.main:app --reload
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | Async Postgres connection string (`postgresql+asyncpg://...`) |
 | `SUPABASE_URL` | Yes | Supabase project URL (e.g. `https://xxx.supabase.co`) |
-| `SUPABASE_ISSUER` | Yes | JWT issuer for token validation |
+| `SUPABASE_ISSUER` | No | JWT issuer for token validation (auto-derived from `SUPABASE_URL` when omitted) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key for admin operations (logout, account deletion) |
 | `FRONTEND_URL` | No | Allowed CORS origin (default: `http://localhost:3000`) |
 | `ALLOW_QUERY_USER_ID` | No | Dev-only: allow `?user_id=` on personalized routes (default: `false`) |

@@ -7,10 +7,25 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import async_session, get_db
 from app.routers import auth, community, dining_hall, homescreen, profile, questionnaire, scan
 
 logger = logging.getLogger(__name__)
+
+
+def _cors_origins() -> list[str]:
+    raw = settings.FRONTEND_URL
+    configured = []
+    if raw:
+        configured = [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    defaults = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    deduped: list[str] = []
+    for origin in configured + defaults:
+        if origin not in deduped:
+            deduped.append(origin)
+    return deduped
 
 
 @asynccontextmanager
@@ -36,9 +51,10 @@ app = FastAPI(title="WhatToEat API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Supabase-Access-Token"],
 )
 
 app.include_router(auth.router)

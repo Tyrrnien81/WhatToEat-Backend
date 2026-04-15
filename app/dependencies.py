@@ -57,6 +57,13 @@ async def _get_jwks() -> dict:
 
 
 def _decode_supabase_token(token: str, jwks: dict) -> dict:
+    issuer = settings.supabase_issuer
+    if not issuer:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SUPABASE_ISSUER or SUPABASE_URL must be configured",
+        )
+
     try:
         header = jwt.get_unverified_header(token)
     except JWTError:
@@ -85,7 +92,7 @@ def _decode_supabase_token(token: str, jwks: dict) -> dict:
             token,
             key,
             algorithms=[alg],
-            issuer=settings.SUPABASE_ISSUER,
+            issuer=issuer,
             options={"verify_aud": False},
         )
     except JWTError:

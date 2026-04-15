@@ -21,3 +21,7 @@ tmp-sb-test/
 
 # OS files
 .DS_Store
+
+# Office temp/backup artifacts
+~$*.xlsx
+*.backup-before-*.xlsx

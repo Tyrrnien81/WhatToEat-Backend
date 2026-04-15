@@ -6,7 +6,7 @@ A FastAPI backend for the WhatToEat app — personalized dining hall recommendat
 
 | Component | Technology |
 |-----------|------------|
-| Language | Python 3.11+ |
+| Language | Python 3.12+ (3.12 recommended for deployment; see [Deploying on Render](#deploying-on-render)) |
 | Framework | FastAPI |
 | ORM | SQLAlchemy (async) |
 | Database | PostgreSQL (Supabase) |
@@ -142,6 +142,13 @@ uvicorn app.main:app --reload
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key for admin operations (logout, account deletion) |
 | `FRONTEND_URL` | No | Allowed CORS origin (default: `http://localhost:3000`) |
 | `ALLOW_QUERY_USER_ID` | No | Dev-only: allow `?user_id=` on personalized routes (default: `false`) |
+
+## Deploying on Render
+
+- **Python version:** New Render services default to **Python 3.14**, which often forces a **source build** of `pydantic-core` (Rust) and can fail on their build image. This repo includes **`.python-version`** with `3.12` so Render installs **3.12.x** and uses **prebuilt wheels**. Alternatively set the env var **`PYTHON_VERSION`** to a full version (e.g. `3.12.8`) in the dashboard (it overrides `.python-version`).
+- **Build:** `pip install -r requirements.txt`
+- **Start:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Env:** Set `DATABASE_URL`, `SUPABASE_*`, `FRONTEND_URL`, and `ALLOW_QUERY_USER_ID=false` as in [Environment Variables](#environment-variables).
 
 ## Integration Tests
 

@@ -6,10 +6,14 @@ data/**/*.json
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Virtual environment
-venv/
 .venv/
+venv/
 
 # Environment variables
 .env
@@ -23,5 +27,5 @@ tmp-sb-test/
 .DS_Store
 
 # Office temp/backup artifacts
-~$*.xlsx
+~$*
 *.backup-before-*.xlsx

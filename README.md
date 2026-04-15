@@ -138,12 +138,23 @@ uvicorn app.main:app --reload
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | Async Postgres connection string (`postgresql+asyncpg://...`) |
 | `SUPABASE_URL` | Yes | Supabase project URL (e.g. `https://xxx.supabase.co`) |
-| `SUPABASE_ISSUER` | Yes | JWT issuer for token validation |
+| `SUPABASE_ISSUER` | No | JWT issuer for token validation (auto-derived from `SUPABASE_URL` when omitted) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key for admin operations (logout, account deletion) |
 | `FRONTEND_URL` | No | Allowed CORS origin (default: `http://localhost:3000`) |
 | `ALLOW_QUERY_USER_ID` | No | Dev-only: allow `?user_id=` on personalized routes (default: `false`) |
 
 ## Integration Tests
+
+### Full API + auth review (pre-release)
+
+Runs in-process via FastAPI `TestClient` (no separate server). Checks public routes, JSON shapes, **401 without JWT** on protected routes, and—when `ALLOW_QUERY_USER_ID=true` and a user exists in the DB (or `--user-id` is passed)—authenticated flows including scan and meal log.
+
+```bash
+python scripts/review_all_endpoints.py
+WTE_ACCESS_TOKEN='<supabase access_token>' python scripts/review_all_endpoints.py   # optional Bearer check
+```
+
+### Per-area scripts
 
 Each test script auto-starts a local uvicorn server (with `ALLOW_QUERY_USER_ID=true`) if one isn't already running, resolves or creates test users, and verifies API responses against DB state.
 
@@ -177,7 +188,7 @@ python scripts/test_scan_api.py       --base-url http://127.0.0.1:8000
 - Scan uploads capped at **10 MB** (`413 Payload Too Large`).
 - CORS configured to allowed origin only.
 - `ALLOW_QUERY_USER_ID` defaults to **`false`** and must never be enabled in production.
-- See [`personal-docs/notes/summaries/`](personal-docs/notes/summaries/) for the full security audit (2026-04-10).
+- Run `python scripts/review_all_endpoints.py` before releases to re-check JWT behavior on all routes.
 
 ## Out of Scope (v2+)
 

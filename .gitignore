@@ -7,14 +7,27 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 .coverage.*
 htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Local uploads (avatar files from profile_service; override with UPLOAD_DIR)
+uploads/
+
+# IDE / editor
+.idea/
+*.swp
+*.swo
+*~
 
 # Virtual environment
 .venv/
 venv/
-.venv/
 
 # Environment variables
 .env
@@ -27,5 +40,6 @@ tmp-sb-test/
 # OS files
 .DS_Store
 
-# Office temp files
+# Office temp/backup artifacts
 ~$*
+*.backup-before-*.xlsx

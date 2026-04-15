@@ -4,10 +4,12 @@ import uuid
 from datetime import date
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.tracking import UserPreference
+from app.models.user import Profile, User
 from app.schemas.questionnaire import (
     PreferencesResponse,
     PreferencesUpdateRequest,
@@ -78,6 +80,64 @@ def _calculate_targets(
     }
 
 
+async def _auth_user_exists(user_id: uuid.UUID, db: AsyncSession) -> bool:
+    """Supabase `public.profiles.id` typically FKs to `auth.users`, not `public.users`."""
+    try:
+        row = (
+            await db.execute(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM auth.users WHERE id = CAST(:uid AS uuid))"
+                ),
+                {"uid": str(user_id)},
+            )
+        ).one()
+        return bool(row[0])
+    except Exception:
+        return False
+
+
+async def _ensure_user_and_profile_for_questionnaire(
+    user_id: uuid.UUID, db: AsyncSession
+) -> None:
+    """Create `public.users` when using dev ?user_id=; add `profiles` only if `auth.users` has this id.
+
+    Supabase links `profiles.id` to **auth.users**. Inserting `Profile` without a matching Auth user
+    raises FK violations. Questionnaire prefs only need `public.users` + `user_preferences`.
+    When ``ALLOW_QUERY_USER_ID`` is off, we do not auto-create (expect Supabase-synced rows).
+    """
+    if not settings.ALLOW_QUERY_USER_ID:
+        return
+
+    existing_user = (
+        await db.execute(select(User).where(User.id == user_id))
+    ).scalar_one_or_none()
+    auth_ok = await _auth_user_exists(user_id, db)
+
+    if existing_user is not None:
+        existing_profile = (
+            await db.execute(select(Profile).where(Profile.id == user_id))
+        ).scalar_one_or_none()
+        if existing_profile is None and auth_ok:
+            db.add(
+                Profile(
+                    id=user_id,
+                    email=existing_user.email,
+                    name=existing_user.name,
+                )
+            )
+            await db.flush()
+        return
+
+    email = f"dev-{user_id}@whattoeat.local"
+    name = "WhatToEat Dev User"
+    db.add(User(id=user_id, email=email, name=name))
+    await db.flush()
+
+    if auth_ok:
+        db.add(Profile(id=user_id, email=email, name=name))
+        await db.flush()
+
+
 # ── POST /questionnaire ─────────────────────────────────────────────────────
 
 async def submit_questionnaire(
@@ -85,6 +145,8 @@ async def submit_questionnaire(
     payload: QuestionnaireSubmitRequest,
     db: AsyncSession,
 ) -> dict:
+    await _ensure_user_and_profile_for_questionnaire(user_id, db)
+
     result = await db.execute(
         select(UserPreference).where(UserPreference.user_id == user_id)
     )

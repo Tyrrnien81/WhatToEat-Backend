@@ -8,7 +8,7 @@ This document describes the table structures for the WhatToEat backend database.
 2. **User Preferences & Tracking** — Onboarding questionnaire, meal logging, daily goals
 3. **Favorites** — Saved meal combos
 
-> **Note:** Auth tables (`users`, `verification_codes`, `refresh_tokens`) are documented separately in `user-table.md` and already implemented as SQLAlchemy models.
+> **Note:** Identity is managed by **Supabase Auth** (`auth.users`). The app uses `users` / `profiles` and related SQLAlchemy models under `app/models/`.
 
 ---
 

@@ -2,18 +2,38 @@ import time
 import uuid
 
 import httpx
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 
 from app.config import settings
 
-security = HTTPBearer()
 bearer_optional = HTTPBearer(auto_error=False)
 
 _jwks_cache: dict | None = None
 _jwks_fetched_at: float = 0
 _JWKS_TTL_SECONDS = 3600  # re-fetch signing keys every hour
+
+# Shown when no Supabase access token is present (mobile often misconfigures fetch headers).
+UNAUTH_DETAIL = (
+    "Not authenticated. Send Authorization: Bearer <access_token> using the Supabase session "
+    "access_token, or set header X-Supabase-Access-Token to the same value."
+)
+
+
+def _access_token_from_request(
+    credentials: HTTPAuthorizationCredentials | None,
+    x_supabase_access_token: str | None,
+) -> str | None:
+    if credentials is not None and credentials.credentials:
+        t = credentials.credentials.strip()
+        if t:
+            return t
+    if x_supabase_access_token:
+        t = x_supabase_access_token.strip()
+        if t:
+            return t
+    return None
 
 
 async def _get_jwks() -> dict:
@@ -37,6 +57,13 @@ async def _get_jwks() -> dict:
 
 
 def _decode_supabase_token(token: str, jwks: dict) -> dict:
+    issuer = settings.supabase_issuer
+    if not issuer:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SUPABASE_ISSUER or SUPABASE_URL must be configured",
+        )
+
     try:
         header = jwt.get_unverified_header(token)
     except JWTError:
@@ -65,7 +92,7 @@ def _decode_supabase_token(token: str, jwks: dict) -> dict:
             token,
             key,
             algorithms=[alg],
-            issuer=settings.SUPABASE_ISSUER,
+            issuer=issuer,
             options={"verify_aud": False},
         )
     except JWTError:
@@ -91,7 +118,7 @@ def _sub_uuid_from_payload(payload: dict) -> uuid.UUID:
         )
 
 
-async def _payload_from_credentials(credentials: HTTPAuthorizationCredentials) -> dict:
+async def _payload_from_access_token(token: str) -> dict:
     try:
         jwks = await _get_jwks()
     except httpx.HTTPError:
@@ -99,13 +126,24 @@ async def _payload_from_credentials(credentials: HTTPAuthorizationCredentials) -
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Could not fetch signing keys",
         )
-    return _decode_supabase_token(credentials.credentials, jwks)
+    return _decode_supabase_token(token, jwks)
+
+
+async def _payload_from_credentials(credentials: HTTPAuthorizationCredentials) -> dict:
+    return await _payload_from_access_token(credentials.credentials)
 
 
 async def get_current_user_payload(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_optional),
+    x_supabase_access_token: str | None = Header(None, alias="X-Supabase-Access-Token"),
 ) -> dict:
-    return await _payload_from_credentials(credentials)
+    token = _access_token_from_request(credentials, x_supabase_access_token)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=UNAUTH_DETAIL,
+        )
+    return await _payload_from_access_token(token)
 
 
 async def get_current_user_id(
@@ -114,13 +152,28 @@ async def get_current_user_id(
     return _sub_uuid_from_payload(payload)
 
 
+async def get_raw_access_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_optional),
+    x_supabase_access_token: str | None = Header(None, alias="X-Supabase-Access-Token"),
+) -> str:
+    token = _access_token_from_request(credentials, x_supabase_access_token)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=UNAUTH_DETAIL,
+        )
+    return token
+
+
 async def get_user_id_jwt_or_dev_query(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_optional),
+    x_supabase_access_token: str | None = Header(None, alias="X-Supabase-Access-Token"),
 ) -> uuid.UUID:
     """JWT (preferred) or, when ALLOW_QUERY_USER_ID is True, ?user_id= for local tests only."""
-    if credentials is not None:
-        payload = await _payload_from_credentials(credentials)
+    token = _access_token_from_request(credentials, x_supabase_access_token)
+    if token:
+        payload = await _payload_from_access_token(token)
         return _sub_uuid_from_payload(payload)
 
     if settings.ALLOW_QUERY_USER_ID:
@@ -136,17 +189,19 @@ async def get_user_id_jwt_or_dev_query(
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Not authenticated",
+        detail=UNAUTH_DETAIL,
     )
 
 
 async def get_optional_user_id_jwt_or_dev_query(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_optional),
+    x_supabase_access_token: str | None = Header(None, alias="X-Supabase-Access-Token"),
 ) -> uuid.UUID | None:
     """Optional identity for public feeds (e.g. likedByMe) via JWT or dev query."""
-    if credentials is not None:
-        payload = await _payload_from_credentials(credentials)
+    token = _access_token_from_request(credentials, x_supabase_access_token)
+    if token:
+        payload = await _payload_from_access_token(token)
         return _sub_uuid_from_payload(payload)
 
     if settings.ALLOW_QUERY_USER_ID:

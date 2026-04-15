@@ -135,3 +135,117 @@ uvicorn app.main:app --reload
 - ML-based food scanning
 - Multi-school support
 - Comments on community posts (included in detailed API doc, deferred in backend plan)
+
+```
+WhatToEat-Backend
+├─ .DS_Store
+├─ API-Skeleton.text
+├─ CODE_ARCHITECTURE.md
+├─ Gordon-Station
+├─ Gordon_Avenue_Market_03-15-2026.json
+├─ IMPLEMENTATION_CHECKLIST.md
+├─ IMPLEMENTATION_SUMMARY.md
+├─ README.md
+├─ START_HERE.md
+├─ TROUBLESHOOTING.md
+├─ app
+│  ├─ .DS_Store
+│  ├─ __init__.py
+│  ├─ config.py
+│  ├─ confirm_user.py
+│  ├─ database.py
+│  ├─ dependencies.py
+│  ├─ main.py
+│  ├─ models
+│  │  ├─ __init__.py
+│  │  ├─ favorite.py
+│  │  └─ user.py
+│  ├─ routers
+│  │  ├─ __init__.py
+│  │  ├─ auth.py
+│  │  └─ favorite.py
+│  ├─ schemas
+│  │  ├─ __init__.py
+│  │  ├─ auth.py
+│  │  └─ favorite.py
+│  ├─ services
+│  │  ├─ __init__.py
+│  │  └─ favorite_service.py
+│  └─ utils
+│     └─ __init__.py
+├─ docs
+│  ├─ AUTHENTICATION_GUIDE.md
+│  ├─ api
+│  │  ├─ README.md
+│  │  ├─ auth
+│  │  │  ├─ README.md
+│  │  │  ├─ forgot-pw.md
+│  │  │  ├─ google.md
+│  │  │  ├─ logout.md
+│  │  │  ├─ me.md
+│  │  │  ├─ refresh-token.md
+│  │  │  ├─ resend-code.md
+│  │  │  ├─ reset-pw.md
+│  │  │  ├─ signin.md
+│  │  │  ├─ signup.md
+│  │  │  └─ verify-email.md
+│  │  ├─ community
+│  │  │  ├─ README.md
+│  │  │  ├─ community.md
+│  │  │  ├─ create-comment.md
+│  │  │  ├─ create-post.md
+│  │  │  ├─ delete-comment.md
+│  │  │  ├─ delete-post.md
+│  │  │  ├─ get-post.md
+│  │  │  ├─ like-post.md
+│  │  │  ├─ list-comments.md
+│  │  │  ├─ list-posts.md
+│  │  │  └─ unlike-post.md
+│  │  ├─ dining-hall
+│  │  │  └─ dining-hall.md
+│  │  ├─ dining-halls
+│  │  │  ├─ README.md
+│  │  │  ├─ dining-halls.md
+│  │  │  ├─ get-hall.md
+│  │  │  ├─ get-menus.md
+│  │  │  ├─ get-stations.md
+│  │  │  └─ list-halls.md
+│  │  ├─ homescreen
+│  │  │  ├─ README.md
+│  │  │  ├─ delete-favorite.md
+│  │  │  ├─ get-combos.md
+│  │  │  ├─ get-daily-goals.md
+│  │  │  ├─ get-menu-summary.md
+│  │  │  ├─ homescreen.md
+│  │  │  └─ save-favorite.md
+│  │  ├─ profile
+│  │  │  ├─ README.md
+│  │  │  ├─ add-food-log.md
+│  │  │  ├─ change-password.md
+│  │  │  ├─ delete-account.md
+│  │  │  ├─ delete-food-log.md
+│  │  │  ├─ food-log-summary.md
+│  │  │  ├─ get-food-log.md
+│  │  │  ├─ get-profile.md
+│  │  │  ├─ profile.md
+│  │  │  ├─ update-profile.md
+│  │  │  └─ upload-avatar.md
+│  │  ├─ questionnaire
+│  │  │  ├─ README.md
+│  │  │  ├─ get-preferences.md
+│  │  │  ├─ questionnaire.md
+│  │  │  ├─ submit.md
+│  │  │  └─ update-preferences.md
+│  │  └─ scan
+│  │     ├─ README.md
+│  │     ├─ log-scan.md
+│  │     ├─ scan.md
+│  │     └─ upload-scan.md
+│  ├─ api-doc.md
+│  ├─ architecture.md
+│  ├─ db-doc.md
+│  ├─ explanation.md
+│  └─ user-table.md
+└─ requirements.txt
+
+```

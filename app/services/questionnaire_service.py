@@ -165,7 +165,7 @@ async def submit_questionnaire(
 
     pref = UserPreference(
         user_id=user_id,
-        birthday=payload.birthday,
+        birthday=date.fromisoformat(payload.birthday),
         gender=payload.gender,
         height=height_cm,
         weight=weight_kg,
@@ -233,7 +233,7 @@ async def update_preferences(
         )
 
     if payload.birthday is not None:
-        pref.birthday = payload.birthday
+        pref.birthday = date.fromisoformat(payload.birthday)
     if payload.gender is not None:
         pref.gender = payload.gender
     if payload.height is not None:

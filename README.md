@@ -114,6 +114,66 @@ whattoeat-backend/
 
 Each domain follows the pattern: **model → schema → service → router**.
 
+## Technical Architecture (Current)
+
+The current backend is a **single FastAPI service** with domain-layered modules and a separate ingestion workflow.
+
+### Core Components
+
+- **API application (`app/main.py`)**: Registers routers, applies CORS policy, and runs startup schema compatibility checks.
+- **Authentication layer (`app/dependencies.py`)**: Validates Supabase JWTs using JWKS, caches signing keys (1-hour TTL), and resolves user identity from `sub`.
+- **Routing layer (`app/routers/*`)**: Exposes domain endpoints (auth, questionnaire, homescreen, dining halls, scan, community, profile).
+- **Service layer (`app/services/*`)**: Implements business logic (recommendation composition, meal logging, profile/community behaviors).
+- **Data layer (`app/database.py`, `app/models/*`)**: Uses async SQLAlchemy with PostgreSQL (Supabase).
+- **Ingestion pipeline (`scraper.py`, `scripts/ingest_json.py`)**: Scrapes Nutrislice data to JSON snapshots and bulk upserts normalized records into Postgres.
+
+### Runtime Characteristics
+
+- Async request handling with FastAPI + SQLAlchemy async sessions.
+- Supabase JWT enforcement on personalized endpoints; optional `?user_id=` fallback is dev-only (`ALLOW_QUERY_USER_ID=true`).
+- Compatibility handling for Supabase pooler/asyncpg behavior in DB connection setup.
+- Menu/catalog data is preloaded by batch ingest and served online through read APIs.
+
+## Data Flow
+
+### Flow A: Authentication & Authorized Request
+
+1. Client signs in through Supabase Auth and receives an access token.
+2. Client calls API with `Authorization: Bearer <token>` (or `X-Supabase-Access-Token`).
+3. Backend validates token signature/issuer against Supabase JWKS.
+4. Backend extracts `sub` as `user_id` and injects it into the route/service.
+5. Service reads/writes user-scoped data and returns response.
+
+### Flow B: Menu Ingestion (Offline)
+
+1. `scraper.py` calls Nutrislice weekly menu endpoints.
+2. Weekly payloads are split into per-day files under `data/YYYY-MM-DD/`.
+3. `scripts/ingest_json.py` parses snapshots and builds normalized entities.
+4. Bulk upserts write to menu tables (`restaurants`, `meal_types`, `foods`, `food_nutrition`, `menu_*`).
+5. Serving endpoints consume these normalized tables.
+
+### Flow C: Recommendation Request (`GET /recommendations/combo`)
+
+1. Request includes date/meal parameters + authenticated identity.
+2. Service loads user targets/preferences (calories, macros, allergens, dislikes).
+3. Service loads matching menu snapshots/foods for requested date/meal.
+4. Candidate foods are filtered by allergens/dislikes.
+5. Combo builder selects items, computes totals/labels, and marks logged status.
+6. API returns combo list payload to client.
+
+### Flow D: Meal Logging & Goal Tracking
+
+1. Client logs meal items via `POST /meals/log`.
+2. Backend persists `meal_logs` + `meal_log_items` with nutrition snapshot values.
+3. Client requests `GET /goals/daily`.
+4. Backend aggregates consumed nutrients and compares against user goals.
+
+### Flow E: Community/Profile Updates
+
+1. Public reads are allowed where applicable; writes require authenticated user identity.
+2. Service layer enforces ownership/authorization logic.
+3. DB writes are committed and response payloads are shaped by schemas.
+
 ## Getting Started
 
 ```bash
@@ -179,7 +239,7 @@ python scripts/test_scan_api.py       --base-url http://127.0.0.1:8000
 | [`docs/api-doc.md`](docs/api-doc.md) | Single-page API reference (all services, JWT rules, status codes) |
 | [`docs/api/README.md`](docs/api/README.md) | API docs index with per-service links |
 | [`docs/api/<service>/`](docs/api/) | Per-endpoint documentation (request/response/errors) |
-| [`docs/architecture.md`](docs/architecture.md) | System architecture overview |
+| [`docs/architecture.md`](docs/architecture.md) | Product architecture/planning notes (legacy draft; this README documents current runtime architecture) |
 | [`docs/db-doc.md`](docs/db-doc.md) | Database schema documentation |
 
 ## Database
